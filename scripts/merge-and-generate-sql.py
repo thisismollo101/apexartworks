@@ -22,7 +22,9 @@ os.makedirs(OUT, exist_ok=True)
 
 PROMPT_VOCAB = re.compile(
     r'\b(whip[- ]?pan|alexa|arri|8k|4k|anamorphic|dolby|hdr|fps|volumetric|'
-    r'rack[- ]?focus|color grade|film grain)\b', re.I)
+    r'rack[- ]?focus|color grade|film grain|tracking shot|drone shot|pov shot|'
+    r'close[- ]?up shot|push[- ]?in|pull[- ]?back|pullback|lens[- ]?flare|'
+    r'speed[- ]?ramp|bokeh|ecu|\bpov\b)\b', re.I)
 
 REQ_CLIP = ['title','summary','runtime_s','aspect_ratio','realism_level',
             'render_stack','grade','motion_feel','shots']
@@ -101,6 +103,20 @@ def main():
                 + ") on conflict (shot_id) do nothing;\n")
         f.write('commit;\n')
 
+    # ON CONFLICT DO UPDATE that refreshes EVERY non-key column, so re-pasting
+    # the files corrects any previously-loaded row in full (not just a subset).
+    CLIP_COLS = ['video_id','title','generator','runtime_s','aspect_ratio','source_url',
+        'verbatim_prompt','asset_status','shot_count','summary','verdict',
+        'step1_grounded_brand_safe','home_route','distinctiveness','register',
+        'realism_level','render_stack','grade','motion_feel','ip_flags',
+        'gate_confidence','gate_notes','is_demo_seed']
+    SHOT_COLS = ['clip_id','shot_index','tc_in','tc_out','duration_s','verbatim_text',
+        'description','subject_role','action','food_item','food_role','setting',
+        'camera_framing','camera_angle','camera_movement','motion_speed','lighting',
+        'vfx','mood']
+    clip_upd = 'on conflict (clip_id) do update set ' + ', '.join(f'{c}=excluded.{c}' for c in CLIP_COLS)
+    shot_upd = 'on conflict (shot_id) do update set ' + ', '.join(f'{c}=excluded.{c}' for c in SHOT_COLS)
+
     # ---- 02/03 library clips + shots (chunked) ----
     CHUNK = 200
     for ci in range(0, len(loaded), CHUNK):
@@ -120,7 +136,7 @@ def main():
                         q(d['grade']) if d['grade']!='none' else 'NULL',q(d['motion_feel']),
                         q('flagged-for-review' if v['ip_flag'] else 'none'),
                         str(v['confidence']),q(v['note']),'false'])
-                    + ") on conflict (clip_id) do update set title=excluded.title, summary=excluded.summary, shot_count=excluded.shot_count;\n")
+                    + ") " + clip_upd + ";\n")
             f.write('commit;\n')
         with open(f'{OUT}/03_shots_{ci//CHUNK+1:02d}.sql','w') as f:
             f.write(f'-- shots for clips {ci+1}..{ci+len(part)}\nbegin;\n')
@@ -139,7 +155,7 @@ def main():
                             q(None if s['motion_speed']=='none' else s['motion_speed']),
                             q(s['lighting']),q(s['vfx']),
                             q(None if s['mood']=='none' else s['mood'])])
-                        + ") on conflict (shot_id) do update set description=excluded.description, verbatim_text=excluded.verbatim_text;\n")
+                        + ") " + shot_upd + ";\n")
             f.write('commit;\n')
 
     # ---- 04 floor log ----
