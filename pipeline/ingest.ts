@@ -28,6 +28,19 @@ const OUT = path.join(process.cwd(), 'out');
 const GATE_CKPT = path.join(OUT, 'gate_results.jsonl');
 const DECOMP_CKPT = path.join(OUT, 'decompose_results.jsonl');
 
+/**
+ * LOAD POLICY — Aidan's ruling (2026-07-11), supersedes the raw gate verdict
+ * for library membership:
+ *   the library loads ONLY keeps whose home is the hospitality subject itself
+ *   (home_route direct|both) at gate confidence >= 0.70.
+ * Aspirational-route keeps remain recorded in the gate checkpoint and in
+ * out/held_keeps.csv but are NOT decomposed and NOT loaded — revisitable
+ * without re-gating. (A held keep must never reach the clips table: any
+ * verdict='keep' row is client-visible through the client_clips view.)
+ */
+const LOAD_MIN_CONFIDENCE = 0.70;
+const LOAD_ROUTES = new Set(['direct', 'both']);
+
 const args = process.argv.slice(2);
 const flag = (name: string) => args.includes(name);
 const opt = (name: string, dflt: number) => {
@@ -127,11 +140,28 @@ async function main() {
 
   const keepRate = ((keeps.length / gated.length) * 100).toFixed(1);
   console.log(`\nGate results: ${keeps.length} keep (${keepRate}%) · ${cuts.length} cut · ${floorCuts.length} FLOOR cut · ${review.length} for review`);
-  console.log(`PRD expectation ≈19% keep (~650–700). ${Math.abs(keeps.length / gated.length - 0.19) > 0.10 ? '⚠ LARGE DEVIATION — stop and review before loading.' : 'Within expected range.'}`);
 
-  // ---------- PHASE 2: decompose keeps (checkpointed) ----------
+  // ---------- LOAD POLICY: select the library subset ----------
+  const selected = keeps.filter((r) => {
+    const v = gateResults.get(r.video_id)!.verdict;
+    return LOAD_ROUTES.has(v.step2_home_route) && v.confidence >= LOAD_MIN_CONFIDENCE;
+  });
+  const held = keeps.filter((r) => !selected.includes(r));
+  fs.writeFileSync(
+    path.join(OUT, 'held_keeps.csv'),
+    'video_id,home_route,confidence,distinctiveness,register\n' +
+      held
+        .map((r) => {
+          const v = gateResults.get(r.video_id)!.verdict;
+          return [r.video_id, v.step2_home_route, v.confidence, v.distinctiveness, v.register].join(',');
+        })
+        .join('\n') + '\n',
+  );
+  console.log(`Load policy (hospitality subjects, conf ≥ ${LOAD_MIN_CONFIDENCE}): ${selected.length} selected for the library · ${held.length} keeps held (out/held_keeps.csv)`);
+
+  // ---------- PHASE 2: decompose SELECTED keeps only (checkpointed) ----------
   const decompResults = loadCheckpoint<DecompRec>(DECOMP_CKPT);
-  const toDecompose = keeps.filter((r) => !decompResults.has(r.video_id));
+  const toDecompose = selected.filter((r) => !decompResults.has(r.video_id));
   console.log(`\nDecompose: ${decompResults.size} cached, ${toDecompose.length} to decompose`);
 
   done = 0;
@@ -189,7 +219,7 @@ async function main() {
 
   const keepRows: Record<string, unknown>[] = [];
   const shotRows: Record<string, unknown>[] = [];
-  for (const r of keeps) {
+  for (const r of selected) {
     const d = decompResults.get(r.video_id)?.decomposition;
     if (!d) continue; // decompose failed — stays out of the library until re-run
     const v = gateResults.get(r.video_id)!.verdict;
@@ -259,7 +289,7 @@ async function main() {
     console.log(`  ${table}: ${rows.length} rows upserted`);
   }
 
-  console.log(`\nINGEST COMPLETE — ${keepRows.length} keepers in the library, ${cutRows.length} cuts logged, ${floorCuts.length} floor-logged, ${shotRows.length} shots.`);
+  console.log(`\nINGEST COMPLETE — ${keepRows.length} clips in the library (of ${keeps.length} gate-keeps; ${held.length} held by load policy), ${cutRows.length} cuts logged, ${floorCuts.length} floor-logged, ${shotRows.length} shots.`);
   console.log(`Review pile for Aidan: out/review_pile.csv (${review.length} rows)`);
 }
 

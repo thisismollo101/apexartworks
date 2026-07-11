@@ -133,7 +133,12 @@ export async function decomposePrompt(
     system: [
       { type: 'text', text: DECOMPOSE_SYSTEM, cache_control: { type: 'ephemeral', ttl: '1h' } },
     ],
-    output_config: { format: { type: 'json_schema', schema: DECOMPOSE_SCHEMA } },
+    // medium effort: segmentation + description writing doesn't need deep
+    // reasoning, and it substantially cuts thinking-token spend per clip
+    output_config: {
+      effort: 'medium',
+      format: { type: 'json_schema', schema: DECOMPOSE_SCHEMA },
+    },
     messages: [
       {
         role: 'user',
