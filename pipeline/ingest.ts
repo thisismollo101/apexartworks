@@ -142,10 +142,20 @@ async function main() {
   console.log(`\nGate results: ${keeps.length} keep (${keepRate}%) · ${cuts.length} cut · ${floorCuts.length} FLOOR cut · ${review.length} for review`);
 
   // ---------- LOAD POLICY: select the library subset ----------
-  const selected = keeps.filter((r) => {
-    const v = gateResults.get(r.video_id)!.verdict;
-    return LOAD_ROUTES.has(v.step2_home_route) && v.confidence >= LOAD_MIN_CONFIDENCE;
-  });
+  // out/library_selection.json (Aidan's frozen go-live list) is authoritative
+  // when present; otherwise fall back to the hospitality-subjects rule.
+  const selectionFile = path.join(OUT, 'library_selection.json');
+  let selected: SourceRow[];
+  if (fs.existsSync(selectionFile)) {
+    const allow = new Set<string>(JSON.parse(fs.readFileSync(selectionFile, 'utf8')).video_ids);
+    selected = keeps.filter((r) => allow.has(r.video_id));
+    console.log(`Load policy: frozen selection file (${allow.size} ids)`);
+  } else {
+    selected = keeps.filter((r) => {
+      const v = gateResults.get(r.video_id)!.verdict;
+      return LOAD_ROUTES.has(v.step2_home_route) && v.confidence >= LOAD_MIN_CONFIDENCE;
+    });
+  }
   const held = keeps.filter((r) => !selected.includes(r));
   fs.writeFileSync(
     path.join(OUT, 'held_keeps.csv'),
