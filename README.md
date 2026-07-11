@@ -40,6 +40,20 @@ cp .env.example .env.local   # fill in Supabase + Anthropic credentials
    Child-safety floor cuts are logged by `video_id` only.
 5. **Run** — `npm run dev` · wall audit: `npx tsx scripts/wall-audit.ts --site http://localhost:3000`
 
+## Admin prompt viewer
+
+`/admin` (linked from nowhere) — Supabase Auth magic-link sign-in, then
+`/admin/clip/[clipId]` shows a keeper's full verbatim prompt (copyable) and
+each shot's verbatim segment under its description. Prompts only: no tags,
+no gate fields, no cut clips. Access is a **closed allowlist** in
+`ADMIN_EMAILS` (server-only env); missing/empty ⇒ nobody is admin. All admin
+routes return 404 — not 403 — for any non-admin, session or not.
+
+One-time Supabase dashboard setup: Authentication → enable Email (magic
+link), and set Site URL + additional redirect URLs to
+`https://apexartworks.com/auth/confirm` and
+`http://localhost:3000/auth/confirm`.
+
 ## Deploy
 
 Vercel project + env vars (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`), then

@@ -29,7 +29,9 @@ create table if not exists clips (
   shot_count                 int,
   summary                    text,
   source_prompt_file         text,          -- INTERNAL
-  verbatim_prompt            text,          -- INTERNAL: the full raw prompt (IP)
+  verbatim_prompt            text,          -- INTERNAL: the full raw prompt (IP).
+                                            -- Read only by the service role (admin
+                                            -- prompt viewer); never in a client view.
   verdict                    text,          -- INTERNAL (gate)
   step1_grounded_brand_safe  text,          -- INTERNAL
   home_route                 text,          -- INTERNAL

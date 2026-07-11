@@ -9,8 +9,13 @@
  *  4. every client HTTP endpoint, grepped for internal field names → absent
  *  5. a cut clip 404s on the clip endpoint and never appears in lists
  *
+ *  6. the admin surface: /api/admin/clips/[id] is 404 for no-session AND for
+ *     a signed-in non-admin, 200 with verbatim_prompt for an admin, and no
+ *     /admin link or internal string appears on any client page.
+ *
  * Usage:
- *   SUPABASE_URL=… SUPABASE_ANON_KEY=… npx tsx scripts/wall-audit.ts [--site http://localhost:3000]
+ *   SUPABASE_URL=… SUPABASE_ANON_KEY=… [SUPABASE_SERVICE_ROLE_KEY=… ADMIN_EMAILS=…] \
+ *     npx tsx scripts/wall-audit.ts [--site http://localhost:3000]
  */
 import { createClient } from '@supabase/supabase-js';
 
@@ -88,13 +93,102 @@ async function auditSite(base: string) {
   if (res.status === 404) ok('cut clip 404s on client endpoint');
   else if (res.status === 200) fail('cut clip served to client', `/api/clips/APX-C-1 → 200`);
   else ok(`cut clip endpoint returned ${res.status} (not served)`);
+
+  // No client page may link or mention the admin surface.
+  for (const ep of ['/', '/search?q=drone', '/clip/APX-C-001']) {
+    const body = await (await fetch(base + ep)).text();
+    if (/["'(]\/admin/.test(body)) fail(`${ep} references /admin`, 'client page links the admin surface');
+    else ok(`${ep} has no /admin reference`);
+  }
+}
+
+/** Mint a session access token for an email without sending mail (service role generateLink → verifyOtp). */
+async function mintSession(email: string): Promise<string> {
+  const url = process.env.SUPABASE_URL!;
+  const service = createClient(url, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
+  const { data, error } = await service.auth.admin.generateLink({ type: 'magiclink', email });
+  if (error) throw new Error(`generateLink(${email}): ${error.message}`);
+  const anon = createClient(url, process.env.SUPABASE_ANON_KEY!, { auth: { persistSession: false } });
+  const { data: verified, error: vErr } = await anon.auth.verifyOtp({
+    token_hash: data.properties.hashed_token,
+    type: 'magiclink',
+  });
+  if (vErr || !verified.session) throw new Error(`verifyOtp(${email}): ${vErr?.message ?? 'no session'}`);
+  return verified.session.access_token;
+}
+
+async function auditAdminSurface(base: string) {
+  const adminEndpoint = `${base}/api/admin/clips/APX-C-001`;
+
+  // 1. no session → 404, never confirm the route exists
+  const anonRes = await fetch(adminEndpoint);
+  if (anonRes.status === 404) ok('admin endpoint 404s with no session');
+  else fail('admin endpoint reachable without a session', `→ ${anonRes.status}`);
+
+  const pageRes = await fetch(`${base}/admin/clip/APX-C-001`);
+  if (pageRes.status === 404) ok('admin page 404s with no session');
+  else fail('admin page reachable without a session', `→ ${pageRes.status}`);
+
+  const canMint = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.SUPABASE_ANON_KEY;
+  if (!canMint) {
+    console.log('… skipping session-based admin checks (need SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY + SUPABASE_ANON_KEY)');
+    return;
+  }
+  const service = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+    auth: { persistSession: false },
+  });
+
+  // 2. signed-in NON-admin → still 404
+  const throwawayEmail = 'wall-audit-nonadmin@example.invalid';
+  let throwawayId: string | null = null;
+  try {
+    const { data: created, error } = await service.auth.admin.createUser({
+      email: throwawayEmail,
+      email_confirm: true,
+    });
+    if (error) throw new Error(error.message);
+    throwawayId = created.user.id;
+    const token = await mintSession(throwawayEmail);
+    const res = await fetch(adminEndpoint, { headers: { Authorization: `Bearer ${token}` } });
+    if (res.status === 404) ok('admin endpoint 404s for a signed-in NON-admin');
+    else fail('non-admin session reached the admin endpoint', `→ ${res.status}`);
+  } catch (err) {
+    fail('non-admin session check errored', String(err));
+  } finally {
+    if (throwawayId) await service.auth.admin.deleteUser(throwawayId).catch(() => {});
+  }
+
+  // 3. admin session → 200 + verbatim_prompt present
+  const adminEmail = (process.env.ADMIN_EMAILS ?? '').split(',')[0]?.trim();
+  if (!adminEmail) {
+    console.log('… skipping admin-positive check (ADMIN_EMAILS not set)');
+    return;
+  }
+  try {
+    const token = await mintSession(adminEmail);
+    const res = await fetch(adminEndpoint, { headers: { Authorization: `Bearer ${token}` } });
+    const body = await res.text();
+    if (res.status === 200 && body.includes('verbatim_prompt')) {
+      ok('admin session gets 200 + verbatim_prompt');
+    } else if (res.status === 404) {
+      // acceptable only if the clip genuinely doesn't exist as a keep yet
+      console.log(`… admin session got 404 on APX-C-001 — verify the clip exists as a keep (seed loaded?)`);
+    } else {
+      fail('admin session response wrong', `→ ${res.status}, verbatim_prompt ${body.includes('verbatim_prompt') ? 'present' : 'ABSENT'}`);
+    }
+  } catch (err) {
+    fail('admin session check errored', String(err));
+  }
 }
 
 async function main() {
   const i = process.argv.indexOf('--site');
   await auditDatabase();
-  if (i >= 0) await auditSite(process.argv[i + 1].replace(/\/$/, ''));
-  else console.log('… skipping site audit (pass --site http://localhost:3000)');
+  if (i >= 0) {
+    const base = process.argv[i + 1].replace(/\/$/, '');
+    await auditSite(base);
+    await auditAdminSurface(base);
+  } else console.log('… skipping site audit (pass --site http://localhost:3000)');
 
   console.log(failures === 0 ? '\nWALL HOLDS.' : `\n${failures} BREACH(ES) — STOP. Do not ship until the wall holds.`);
   process.exit(failures === 0 ? 0 : 1);

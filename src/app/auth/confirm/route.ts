@@ -1,0 +1,32 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
+import type { EmailOtpType } from '@supabase/supabase-js';
+
+/**
+ * Magic-link callback: exchanges the emailed token_hash for a session cookie,
+ * then lands on /admin. Creating a session grants no data access (RLS
+ * deny-all); adminhood is decided per-request by assertAdmin().
+ */
+export async function GET(req: NextRequest) {
+  const tokenHash = req.nextUrl.searchParams.get('token_hash');
+  const type = (req.nextUrl.searchParams.get('type') ?? 'magiclink') as EmailOtpType;
+  const redirect = NextResponse.redirect(new URL('/admin', req.url));
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+  if (!tokenHash || !url || !anonKey) return redirect;
+
+  const supabase = createServerClient(url, anonKey, {
+    cookies: {
+      getAll: () => req.cookies.getAll(),
+      setAll: (cookiesToSet) => {
+        for (const { name, value, options } of cookiesToSet) {
+          redirect.cookies.set(name, value, options);
+        }
+      },
+    },
+  });
+
+  await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
+  return redirect; // success or failure, land on /admin — it decides what to show
+}
