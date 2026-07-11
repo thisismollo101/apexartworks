@@ -1,0 +1,91 @@
+import Link from 'next/link';
+import { Sunburst } from '@/components/Sunburst';
+import { SearchBar, QuickChips } from '@/components/SearchBar';
+import { ClipCard } from '@/components/ClipCard';
+import { listClips, type SearchResult } from '@/lib/clips';
+
+export const dynamic = 'force-dynamic';
+
+export default async function Home() {
+  let clips: SearchResult[] = [];
+  let libraryDown = false;
+  try {
+    clips = await listClips(60);
+  } catch {
+    libraryDown = true;
+  }
+
+  return (
+    <main className="mx-auto w-full max-w-[1200px] flex-1 px-6 pb-16 md:px-8">
+      {/* SECTION 1 — sunburst hero: one idea, one action (Doc 04 §1) */}
+      <section className="relative flex flex-col items-center pb-16 pt-24 text-center md:pt-32">
+        <Sunburst />
+        <p className="hero-rise text-[12px] font-semibold uppercase tracking-[0.18em] text-txt-muted">
+          Apex Artworks · Library
+        </p>
+        <h1 className="hero-rise mt-3 text-[40px] font-bold leading-tight tracking-[-0.02em] md:text-[56px]">
+          Apex Artworks
+        </h1>
+        <p className="hero-rise-delayed mt-3 text-[16px] text-txt-secondary md:text-[18px]">
+          The hospitality film library
+        </p>
+      </section>
+
+      {/* SECTION 2 — search: the product (Doc 02 §Page 1) */}
+      <section className="mx-auto max-w-[720px]">
+        <h2 className="mb-6 text-center text-[26px] font-bold tracking-[-0.01em] md:text-[32px]">
+          Find your film
+        </h2>
+        <SearchBar />
+        <div className="mt-4 flex justify-center">
+          <QuickChips />
+        </div>
+      </section>
+
+      {/* SECTION 3 — the grid */}
+      <section className="mt-24">
+        <div className="mb-6 flex items-baseline justify-between border-b border-hairline pb-4">
+          <h2 className="text-[12px] font-semibold uppercase tracking-[0.16em] text-txt-muted">
+            The library
+          </h2>
+          <span className="text-[13px] text-txt-muted">
+            {libraryDown ? '' : `${clips.length} film${clips.length === 1 ? '' : 's'}`}
+          </span>
+        </div>
+
+        {libraryDown ? (
+          <p className="py-16 text-center text-txt-secondary">
+            The library is connecting. Try again shortly.
+          </p>
+        ) : clips.length === 0 ? (
+          <p className="py-16 text-center text-txt-secondary">
+            No films yet. The library is being curated — check back soon.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {clips.map((clip) => (
+              <ClipCard key={clip.clip_id} clip={clip} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* SECTION 4 — one closing statement, one action */}
+      <section className="mx-auto mt-24 max-w-[720px] text-center">
+        <p className="text-[18px] text-txt-secondary">
+          Every film here passed the gate. Choose the beats you want and the Apex team takes it from there.
+        </p>
+        <Link
+          href="/search?q=food"
+          className="mt-8 inline-block w-full max-w-sm rounded-full bg-white px-8 py-[18px] text-[16px] font-semibold text-black transition-opacity hover:opacity-90"
+        >
+          Browse the library
+        </Link>
+      </section>
+
+      <footer className="mt-24 border-t border-hairline pt-8 text-center text-[13px] text-txt-muted">
+        Apex Artworks · hospitality film library
+      </footer>
+    </main>
+  );
+}

@@ -1,0 +1,55 @@
+table,field,type,picklist_or_notes,visibility
+clip,clip_id,string,APX-C-###,internal
+clip,title,string,,client
+clip,generator,enum,seedance_2.0 | other,internal
+clip,runtime_s,number,,client
+clip,aspect_ratio,enum,16:9 | 9:16 | 2.39:1 | 1:1,client
+clip,video_url,url,watchable asset. THE THING THE CLIENT CLICKS.,client
+clip,thumbnail_url,url,poster frame for the grid,client
+clip,source_url,url,"where it came from (X post, original upload)",internal
+clip,asset_status,enum,linked | missing | dead-link,internal
+clip,shot_count,number,derived from shot rows,client
+clip,summary,text,"plain-English, no prompt language",client
+clip,source_prompt_file,path,prompts/<clip_id>.txt,internal
+clip,verdict,enum,keep | cut,internal
+clip,step1_grounded_brand_safe,enum,pass | fail,internal
+clip,home_route,enum,direct | aspirational | both | none,internal
+clip,cut_reason,enum,no-home | not-grounded | not-brand-safe | fake-contrived | null,internal
+clip,occasion_context,enum,none | halloween | christmas | eid | nye | lunar-new-year  [RULE UNRESOLVED],internal
+clip,distinctiveness,enum,high | standard | low,internal
+clip,register,enum,flagship-ad | food-cm | craft-piece | cultural-moment | destination-showcase | light-social | meme-comedy | mood-piece,internal
+clip,product_fit,multi,Stay | Menu | Event | Promotion | Live | Venue | Studio | Experience | International,internal
+clip,realism_level,enum,photoreal | stylized-real | 3d-animation | 2.5d-hybrid | macro-stopmotion,internal
+clip,render_stack,text,lens / format / grain / HDR,internal
+clip,grade,enum,teal-orange | warm-amber | cold-blue | neon-magenta | golden-hour | mixed,internal
+clip,motion_feel,enum,24fps-cinematic | high-fps-slowmo | mixed,internal
+clip,prompt_health,enum,clean | shaky | likely-bad-render,internal
+clip,risk_flags,multi,auto-action-pileup | transform-render | on-screen-text | brand-logo-fidelity | character-consistency | animal-dexterity | liquid-sim | none,internal
+clip,ip_flags,multi,real-brand | real-product-label | real-person-likeness | none,internal
+clip,fix_note,text,what an upgrade pass would need,internal
+clip,calibration_note,text,which rule this clip taught / tests,internal
+shot,shot_id,string,APX-S-###-#,internal
+shot,clip_id,fk,-> clip.clip_id,internal
+shot,shot_index,number,,client
+shot,tc_in,number,seconds,internal
+shot,tc_out,number,seconds,internal
+shot,duration_s,number,,internal
+shot,verbatim_text,text,THE LIFTABLE PROMPT LINE,INTERNAL-ONLY / IP
+shot,description,text,real-world account of the beat,client
+shot,shot_deeplink,url,derived: video_url + '#t=' + tc_in,client
+shot,subject_role,enum,chef | courier | barista | guest | driver | agent | animal-character | family | none,internal
+shot,action,multi,sprinting | leaping | sliding | garnishing | serving | pouring | plating | flipping | searing | chopping | frothing | biting | vaulting | driving | racing | praying | feasting | tug-of-war | none,internal
+shot,food_item,text,ramen | dumplings | espresso | pizza | dessert | spices | dim-sum | skewers | dates | none,internal
+shot,food_role,enum,hero | featured | incidental | none,internal
+shot,setting,text,,internal
+shot,camera_framing,enum,ecu | cu | medium | wide | extreme-wide,internal
+shot,camera_angle,enum,low | eye | high | overhead | dutch | pov,internal
+shot,camera_movement,enum,drone | orbit | tracking | whip-pan | push-in | pull-back | crane | fpv | handheld | static | rack-focus | tilt,internal
+shot,motion_speed,enum,real-time | slow-mo | bullet-time | speed-ramp | time-remap,internal
+shot,lighting,text,,internal
+shot,vfx,multi,steam | sparks | particles | fire | lens-flare | shatter | energy | water | none,internal
+shot,audio_sfx,text,,internal
+shot,dialogue,text,verbatim spoken line,internal
+shot,mood,enum,intense | playful | reverent | appetising | epic | calm | comedic | awe,internal
+shot,liftable,enum,yes | partial | no,internal
+shot,shot_risk,text,render risk on this beat,internal
