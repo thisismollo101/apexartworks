@@ -42,3 +42,6 @@ yarn-error.log*
 next-env.d.ts
 out/
 .env*.local
+
+# generated import artifacts (regenerable from the pipeline; delivered directly)
+/data/import/
