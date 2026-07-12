@@ -100,6 +100,26 @@ export async function getClip(clipId: string): Promise<{ clip: ClientClip; shots
   };
 }
 
+/**
+ * Related clips for a detail page — other keep-verdict films from the library,
+ * excluding the current one. Read through the client_clips view, so only
+ * client-safe columns and only keeps can ever surface (the wall holds).
+ */
+export async function relatedClips(clipId: string, limit = 3): Promise<SearchResult[]> {
+  const db = supabaseServer();
+  // over-fetch a little, then drop the current clip and cap at `limit`
+  const { data, error } = await db
+    .from('client_clips')
+    .select(CLIP_SELECT)
+    .neq('clip_id', clipId)
+    .limit(limit + 4);
+  if (error) throw new Error(error.message);
+  return asRows(data)
+    .filter((r) => r.clip_id !== clipId)
+    .slice(0, limit)
+    .map((r) => ({ ...toClientClip(r), match_hint: null }));
+}
+
 export async function saveSelection(input: {
   clip_id: string;
   shot_indexes: number[];

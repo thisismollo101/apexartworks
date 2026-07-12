@@ -1,16 +1,18 @@
 import Link from 'next/link';
 import { Sunburst } from '@/components/Sunburst';
-import { SearchBar, QuickChips } from '@/components/SearchBar';
 import { ClipCard } from '@/components/ClipCard';
 import { listClips, type SearchResult } from '@/lib/clips';
 
 export const dynamic = 'force-dynamic';
 
+// The homepage shows a small curated sample, not the whole library.
+const SAMPLE_COUNT = 6;
+
 export default async function Home() {
   let clips: SearchResult[] = [];
   let libraryDown = false;
   try {
-    clips = await listClips(60);
+    clips = await listClips(SAMPLE_COUNT);
   } catch {
     libraryDown = true;
   }
@@ -31,26 +33,13 @@ export default async function Home() {
         </p>
       </section>
 
-      {/* SECTION 2 — search: the product (Doc 02 §Page 1) */}
-      <section className="mx-auto max-w-[720px]">
-        <h2 className="mb-6 text-center text-[26px] font-bold tracking-[-0.01em] md:text-[32px]">
-          Find your film
-        </h2>
-        <SearchBar />
-        <div className="mt-4 flex justify-center">
-          <QuickChips />
-        </div>
-      </section>
-
-      {/* SECTION 3 — the grid */}
-      <section className="mt-24">
+      {/* SECTION 2 — a 6-clip sample in a 2×3 grid (search lives in the header) */}
+      <section className="mt-8">
         <div className="mb-6 flex items-baseline justify-between border-b border-hairline pb-4">
           <h2 className="text-[12px] font-semibold uppercase tracking-[0.16em] text-txt-muted">
-            The library
+            Sample films
           </h2>
-          <span className="text-[13px] text-txt-muted">
-            {libraryDown ? '' : `${clips.length} film${clips.length === 1 ? '' : 's'}`}
-          </span>
+          <span className="text-[13px] text-txt-muted">search or browse for more</span>
         </div>
 
         {libraryDown ? (
@@ -62,8 +51,9 @@ export default async function Home() {
             No films yet. The library is being curated — check back soon.
           </p>
         ) : (
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {clips.map((clip) => (
+          // exactly 6 clips → 3 across, 2 rows on desktop
+          <div className="grid grid-cols-2 gap-6 md:grid-cols-3">
+            {clips.slice(0, SAMPLE_COUNT).map((clip) => (
               <ClipCard key={clip.clip_id} clip={clip} />
             ))}
           </div>

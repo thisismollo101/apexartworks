@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getClip } from '@/lib/clips';
+import { getClip, relatedClips } from '@/lib/clips';
 import { ShotSelector } from '@/components/ShotSelector';
+import { ClipCard } from '@/components/ClipCard';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,6 +16,7 @@ export default async function ClipPage({
   const result = await getClip(clipId).catch(() => null);
   if (!result) notFound();
   const { clip, shots } = result;
+  const related = await relatedClips(clipId, 3).catch(() => []);
 
   const meta = [
     clip.runtime_s ? `${clip.runtime_s}s` : null,
@@ -61,8 +63,37 @@ export default async function ClipPage({
         )}
         <p className="mt-3 text-[13px] tracking-wide text-txt-muted">{meta}</p>
 
-        <ShotSelector clipId={clip.clip_id} shots={shots} />
+        {shots.length > 0 ? (
+          <ShotSelector clipId={clip.clip_id} shots={shots} />
+        ) : (
+          <section className="mt-12">
+            <div className="flex items-baseline justify-between border-b border-hairline pb-3">
+              <h2 className="text-[12px] font-semibold uppercase tracking-[0.16em] text-txt-muted">
+                The shots
+              </h2>
+            </div>
+            <p className="py-10 text-center text-[15px] text-txt-secondary">
+              The beats for this film are coming online. Check back shortly.
+            </p>
+          </section>
+        )}
       </div>
+
+      {/* Related clips — three more films from the library, in one row */}
+      {related.length > 0 && (
+        <section className="mx-auto mt-24 max-w-[1100px]">
+          <div className="mb-6 flex items-baseline justify-between border-b border-hairline pb-4">
+            <h2 className="text-[12px] font-semibold uppercase tracking-[0.16em] text-txt-muted">
+              Related clips
+            </h2>
+          </div>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+            {related.slice(0, 3).map((rc) => (
+              <ClipCard key={rc.clip_id} clip={rc} />
+            ))}
+          </div>
+        </section>
+      )}
 
       <footer className="mt-24 border-t border-hairline pt-8 text-center text-[13px] text-txt-muted">
         Apex Artworks · hospitality film library
