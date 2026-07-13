@@ -1,12 +1,18 @@
 /**
  * WALL AUDIT — must pass pre- and post-deploy (PRD §5).
  *
- * Verifies, from OUTSIDE the trusted server, that no route returns the IP:
+ * OWNER OVERRIDE (Aidan, 2026-07-13): shot `verbatim_text` and clip `source_url`
+ * are now DELIBERATELY public (Ads-of-the-World-style showcase). They are no
+ * longer breaches. The wall now protects the REMAINING internal fields:
+ * clip-level `verbatim_prompt` (the full raw prompt, admin-only), all gate
+ * fields, and the internal shot tags.
+ *
+ * Verifies, from OUTSIDE the trusted server, that no route returns those:
  *  1. anon key + master tables (clips/shots/client_selection/floor_log)
  *     → permission denied / zero rows
  *  2. anon key + client views → only the allowlisted columns
- *  3. anon key + `select verbatim_text from client_shots` → column error
- *  4. every client HTTP endpoint, grepped for internal field names → absent
+ *  3. anon key + client_shots → verbatim_text IS present (intended public)
+ *  4. every client HTTP endpoint, grepped for still-internal field names → absent
  *  5. a cut clip 404s on the clip endpoint and never appears in lists
  *
  *  6. the admin surface: /api/admin/clips/[id] is 404 for no-session AND for
@@ -19,8 +25,10 @@
  */
 import { createClient } from '@supabase/supabase-js';
 
+// Fields that must STILL never reach a client (verbatim_text + source_url are
+// intentionally excluded per the owner override — they are now public).
 const FORBIDDEN_FIELDS = [
-  'verbatim_text', 'verbatim_prompt', 'source_url', 'verdict', 'cut_reason',
+  'verbatim_prompt', 'verdict', 'cut_reason',
   'step1_grounded_brand_safe', 'home_route', 'distinctiveness', 'register',
   'product_fit', 'prompt_health', 'risk_flags', 'ip_flags', 'fix_note',
   'calibration_note', 'gate_confidence', 'gate_notes', 'subject_role',
@@ -50,9 +58,10 @@ async function auditDatabase() {
     else fail(`anon read master table "${table}"`, JSON.stringify(data[0]).slice(0, 200));
   }
 
+  // Owner override: verbatim_text is now intended public on client_shots.
   const { error: colErr } = await anon.from('client_shots').select('verbatim_text').limit(1);
-  if (colErr) ok('client_shots has no verbatim_text column');
-  else fail('client_shots exposed verbatim_text', 'column reachable via anon');
+  if (!colErr) ok('client_shots exposes verbatim_text (intended public per owner override)');
+  else fail('client_shots missing verbatim_text', 'owner override expects it public — apply 0003');
 
   const { data: viewRow, error: viewErr } = await anon.from('client_clips').select('*').limit(1);
   if (viewErr) {

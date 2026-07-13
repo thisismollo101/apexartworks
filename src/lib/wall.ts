@@ -3,11 +3,16 @@
  *
  * Derived from the `visibility` column of data/apex_schema.csv and PRD §5.
  * Every client-facing API response is built by picking exactly these fields.
- * Everything else — shot.verbatim_text (the IP), the internal tags, the gate
- * fields, source_url — never appears in any response, by construction.
+ *
+ * OWNER OVERRIDE (Aidan, 2026-07-13): shot `verbatim_text` and clip
+ * `source_url` are now DELIBERATELY client-facing (open showcase) and are in
+ * the allowlists below. The wall still keeps everything else out — clip-level
+ * `verbatim_prompt` (the full raw prompt, admin-only), the internal tags, and
+ * the gate fields never appear in any client response, by construction.
  *
  * The database enforces the same wall independently (RLS deny-all on the
- * master tables; anon can only read the client_clips / client_shots views).
+ * master tables; anon can only read the client_clips / client_shots views,
+ * which now include verbatim_text + source_url per the override).
  * This module is the application layer of that defense in depth.
  */
 
