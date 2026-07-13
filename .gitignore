@@ -45,3 +45,5 @@ out/
 
 # generated import artifacts (regenerable from the pipeline; delivered directly)
 /data/import/
+# generated per-clip breakdown files (regenerable from out/apex_full_library.json)
+/data/clips/
