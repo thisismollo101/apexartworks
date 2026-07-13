@@ -20,6 +20,9 @@ export const CLIP_CLIENT_FIELDS = [
   'shot_count',
   'video_url',
   'thumbnail_url',
+  // Owner override (Aidan, 2026-07-13): the original source link is now shown
+  // publicly as the watchable link, since no hosted video_url assets exist yet.
+  'source_url',
 ] as const;
 
 export const SHOT_CLIENT_FIELDS = [
@@ -38,6 +41,7 @@ export type ClientClip = {
   shot_count: number | null;
   video_url: string | null;
   thumbnail_url: string | null;
+  source_url: string | null;
 };
 
 export type ClientShot = {

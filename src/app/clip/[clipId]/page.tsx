@@ -43,6 +43,20 @@ export default async function ClipPage({
             playsInline
             className="h-full w-full object-contain"
           />
+        ) : clip.source_url ? (
+          <a
+            href={clip.source_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group flex h-full w-full flex-col items-center justify-center gap-3 transition-colors hover:bg-surface-hover"
+          >
+            <svg width="52" height="52" viewBox="0 0 40 40" aria-hidden="true">
+              <circle cx="20" cy="20" r="19" fill="none" stroke="#3A3A3D" strokeWidth="1" />
+              <path d="M16.5 13.5v13l11-6.5z" fill="rgba(255,255,255,0.72)" />
+            </svg>
+            <p className="text-[14px] font-semibold text-txt">Watch the film ↗</p>
+            <p className="max-w-[80%] truncate text-[12px] text-txt-muted">{clip.source_url}</p>
+          </a>
         ) : (
           <div className="flex h-full w-full flex-col items-center justify-center gap-3">
             <svg width="52" height="52" viewBox="0 0 40 40" aria-hidden="true">
