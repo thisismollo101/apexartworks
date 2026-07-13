@@ -28,7 +28,23 @@ export const CLIP_CLIENT_FIELDS = [
   // Owner override (Aidan, 2026-07-13): the original source link is now shown
   // publicly as the watchable link, since no hosted video_url assets exist yet.
   'source_url',
+  // Curated browse facets (0004): fixed-enum values derived at load time from
+  // the internal tags. The raw tags themselves stay behind the wall.
+  'categories',
 ] as const;
+
+/** The only values `categories` may ever contain (0004_categories.sql). */
+export const CATEGORY_KEYS = [
+  'food',
+  'beverage',
+  'venue',
+  'event',
+  'travel',
+  'characters',
+  'action',
+  'lifestyle',
+] as const;
+export type CategoryKey = (typeof CATEGORY_KEYS)[number];
 
 export const SHOT_CLIENT_FIELDS = [
   'clip_id',
@@ -50,6 +66,7 @@ export type ClientClip = {
   video_url: string | null;
   thumbnail_url: string | null;
   source_url: string | null;
+  categories: string[] | null;
 };
 
 export type ClientShot = {

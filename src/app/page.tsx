@@ -77,7 +77,7 @@ export default async function Home({
         </p>
         {!showAll && (
           <Link
-            href="/?view=all#library"
+            href="/browse"
             className="mt-8 inline-block w-full max-w-sm rounded-full bg-white px-8 py-[18px] text-[16px] font-semibold text-black transition-opacity hover:opacity-90"
           >
             Browse the library

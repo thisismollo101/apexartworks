@@ -1,6 +1,15 @@
 import 'server-only';
 import { supabaseServer } from './supabase';
-import { CLIP_SELECT, SHOT_SELECT, toClientClip, toClientShot, type ClientClip, type ClientShot } from './wall';
+import {
+  CATEGORY_KEYS,
+  CLIP_SELECT,
+  SHOT_SELECT,
+  toClientClip,
+  toClientShot,
+  type CategoryKey,
+  type ClientClip,
+  type ClientShot,
+} from './wall';
 
 /**
  * Data access for the client-facing surface.
@@ -33,55 +42,158 @@ async function rankByDistinctiveness<T extends { clip_id: string }>(rows: T[]): 
   return [...rows].sort((a, b) => (rank.get(a.clip_id) ?? 1) - (rank.get(b.clip_id) ?? 1));
 }
 
-export async function listClips(limit = 60, offset = 0): Promise<SearchResult[]> {
+/** Narrow an arbitrary query param to a known category key (or undefined). */
+export const asCategory = (v: string | undefined): CategoryKey | undefined =>
+  CATEGORY_KEYS.find((k) => k === v);
+
+export async function listClips(limit = 60, offset = 0, category?: CategoryKey): Promise<SearchResult[]> {
   const db = supabaseServer();
-  const { data, error } = await db.from('client_clips').select(CLIP_SELECT).range(offset, offset + limit - 1);
+  // ORDER BY makes pagination stable — without it Postgres may repeat/skip
+  // rows across pages, silently hiding clips from an exhaustive browse.
+  let query = db.from('client_clips').select(CLIP_SELECT).order('clip_id', { ascending: true });
+  if (category) query = query.contains('categories', [category]);
+  const { data, error } = await query.range(offset, offset + limit - 1);
   if (error) throw new Error(error.message);
   const ranked = await rankByDistinctiveness(asRows(data));
   return ranked.map((r) => ({ ...toClientClip(r), match_hint: null }));
 }
 
+/** Total visible clips (optionally within one category) — drives pagination. */
+export async function countClips(category?: CategoryKey): Promise<number> {
+  const db = supabaseServer();
+  let query = db.from('client_clips').select('clip_id', { count: 'exact', head: true });
+  if (category) query = query.contains('categories', [category]);
+  const { count, error } = await query;
+  if (error) throw new Error(error.message);
+  return count ?? 0;
+}
+
+// Words that carry no search signal on their own — dropped before matching.
+const STOP_WORDS = new Set([
+  'a', 'an', 'the', 'and', 'or', 'of', 'in', 'on', 'at', 'for', 'with', 'to',
+  'is', 'are', 'was', 'it', 'its', 'my', 'our', 'your', 'me', 'we', 'i',
+  'this', 'that', 'from', 'by', 'as', 'be', 'has', 'have',
+]);
+
+// Query words that map straight onto a browse category, so "drinks" finds
+// every beverage film even when the word itself never appears in the text.
+const CATEGORY_SYNONYMS: Record<string, CategoryKey> = {
+  food: 'food', foods: 'food', eat: 'food', eating: 'food', dish: 'food', meal: 'food',
+  beverage: 'beverage', beverages: 'beverage', drink: 'beverage', drinks: 'beverage',
+  venue: 'venue', venues: 'venue', restaurant: 'venue', restaurants: 'venue',
+  event: 'event', events: 'event',
+  travel: 'travel', place: 'travel', places: 'travel',
+  character: 'characters', characters: 'characters', animal: 'characters', animals: 'characters', mascot: 'characters',
+  action: 'action',
+  lifestyle: 'lifestyle',
+};
+
+/** Split a phrase into deduped, stop-word-free keywords. */
+const tokenize = (q: string): string[] => [
+  ...new Set(
+    q.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter((w) => w.length >= 2 && !STOP_WORDS.has(w)),
+  ),
+];
+
 /**
- * Two-layer search (PRD §6): match clip title/summary OR any client-safe
- * shot description. A clip surfaces on "pasta" whether it was tagged or
- * merely described as twirling pasta.
+ * Tokenized two-layer search with relevance ranking (PRD §6, upgraded):
+ * the phrase is split into keywords ("romantic date night" → romantic, date,
+ * night) and a clip surfaces when ANY keyword matches its title/summary, a
+ * shot description, or a category tag (with basic synonyms, e.g. drinks →
+ * beverage). Ranking: exact-phrase matches first, then by how many distinct
+ * keywords a clip matched, with the distinctiveness order as the tiebreak.
  */
 export async function searchClips(q: string, limit = 60): Promise<SearchResult[]> {
   const db = supabaseServer();
-  const like = `%${escapeLike(q.trim())}%`;
+  const phrase = q.trim();
+  const tokens = tokenize(phrase);
+  if (tokens.length === 0) tokens.push(phrase.toLowerCase());
 
-  const [clipRes, shotRes] = await Promise.all([
-    db.from('client_clips').select(CLIP_SELECT).or(`title.ilike.${like},summary.ilike.${like}`).limit(limit),
-    db.from('client_shots').select('clip_id,shot_index,description').ilike('description', like).limit(200),
-  ]);
-  if (clipRes.error) throw new Error(clipRes.error.message);
-  if (shotRes.error) throw new Error(shotRes.error.message);
+  // Per-token matchers across all three surfaces, all in parallel. The
+  // library is small (hundreds of clips), so a few queries per token is fine.
+  const perToken = await Promise.all(
+    tokens.map(async (tok) => {
+      const like = `%${escapeLike(tok)}%`;
+      const category = CATEGORY_SYNONYMS[tok];
+      const [clipRes, shotRes, catRes] = await Promise.all([
+        db.from('client_clips').select('clip_id').or(`title.ilike.${like},summary.ilike.${like}`).limit(400),
+        db.from('client_shots').select('clip_id,shot_index').ilike('description', like).limit(600),
+        category
+          ? db.from('client_clips').select('clip_id').contains('categories', [category]).limit(400)
+          : Promise.resolve({ data: [], error: null }),
+      ]);
+      if (clipRes.error) throw new Error(clipRes.error.message);
+      if (shotRes.error) throw new Error(shotRes.error.message);
+      if (catRes.error) throw new Error(catRes.error.message);
+      const ids = new Set<string>();
+      const shotHits = new Map<string, number>(); // clip_id -> first matching shot
+      for (const r of asRows(clipRes.data)) ids.add(r.clip_id);
+      for (const r of asRows(shotRes.data)) {
+        ids.add(r.clip_id);
+        if (!shotHits.has(r.clip_id)) shotHits.set(r.clip_id, r.shot_index as number);
+      }
+      for (const r of asRows(catRes.data)) ids.add(r.clip_id);
+      return { tok, ids, shotHits };
+    }),
+  );
 
-  const hints = new Map<string, string>();
-  for (const s of asRows(shotRes.data)) {
-    if (!hints.has(s.clip_id)) hints.set(s.clip_id, `matches shot ${s.shot_index}`);
+  // Exact-phrase layer (only meaningful for multi-word queries).
+  const phraseIds = new Set<string>();
+  if (tokens.length > 1) {
+    const like = `%${escapeLike(phrase)}%`;
+    const [clipRes, shotRes] = await Promise.all([
+      db.from('client_clips').select('clip_id').or(`title.ilike.${like},summary.ilike.${like}`).limit(400),
+      db.from('client_shots').select('clip_id').ilike('description', like).limit(400),
+    ]);
+    for (const r of asRows(clipRes.data)) phraseIds.add(r.clip_id);
+    for (const r of asRows(shotRes.data)) phraseIds.add(r.clip_id);
   }
 
-  const byId = new Map<string, Row>();
-  const directIds = new Set<string>();
-  for (const c of asRows(clipRes.data)) {
-    byId.set(c.clip_id, c);
-    directIds.add(c.clip_id);
+  // Score: exact phrase ≫ all keywords ≫ more keywords ≫ one keyword.
+  const matched = new Map<string, { count: number; toks: string[]; shot: number | null }>();
+  for (const { tok, ids, shotHits } of perToken) {
+    for (const id of ids) {
+      const m = matched.get(id) ?? { count: 0, toks: [], shot: null };
+      m.count += 1;
+      m.toks.push(tok);
+      if (m.shot === null && shotHits.has(id)) m.shot = shotHits.get(id)!;
+      matched.set(id, m);
+    }
   }
+  if (matched.size === 0) return [];
 
-  // Clips that matched only via a shot description still need their card data
-  const shotOnlyIds = [...hints.keys()].filter((id) => !byId.has(id)).slice(0, limit);
-  if (shotOnlyIds.length) {
-    const { data } = await db.from('client_clips').select(CLIP_SELECT).in('clip_id', shotOnlyIds);
-    for (const c of asRows(data)) byId.set(c.clip_id, c);
-  }
+  const score = (id: string) =>
+    (phraseIds.has(id) ? 1000 : 0) + (matched.get(id)!.count === tokens.length ? 100 : 0) + matched.get(id)!.count;
 
-  const ranked = await rankByDistinctiveness([...byId.values()]);
-  return ranked.slice(0, limit).map((r) => ({
-    ...toClientClip(r),
-    // the muted "why it surfaced" hint — only for shot-description matches
-    match_hint: directIds.has(r.clip_id) ? null : hints.get(r.clip_id) ?? null,
-  }));
+  // Order ids by relevance, keep the top slice, then fetch card data once.
+  const orderedIds = [...matched.keys()].sort((a, b) => score(b) - score(a)).slice(0, limit);
+  const { data, error } = await db.from('client_clips').select(CLIP_SELECT).in('clip_id', orderedIds);
+  if (error) throw new Error(error.message);
+  const byId = new Map(asRows(data).map((r) => [r.clip_id, r]));
+
+  // Distinctiveness only breaks ties inside the same relevance score.
+  const distinctOrder = await rankByDistinctiveness(orderedIds.map((id) => ({ clip_id: id })));
+  const distinctRank = new Map(distinctOrder.map((r, i) => [r.clip_id, i]));
+  orderedIds.sort(
+    (a, b) => score(b) - score(a) || (distinctRank.get(a) ?? 0) - (distinctRank.get(b) ?? 0),
+  );
+
+  return orderedIds
+    .filter((id) => byId.has(id))
+    .map((id) => {
+      const m = matched.get(id)!;
+      const full = phraseIds.has(id) || m.count === tokens.length;
+      return {
+        ...toClientClip(byId.get(id)!),
+        // "why it surfaced": partial keyword matches say which words hit;
+        // shot-level matches point at the beat, like before.
+        match_hint: !full && tokens.length > 1
+          ? `matches ${m.toks.join(', ')}`
+          : m.shot !== null
+            ? `matches shot ${m.shot}`
+            : null,
+      };
+    });
 }
 
 export async function getClip(clipId: string): Promise<{ clip: ClientClip; shots: ClientShot[] } | null> {

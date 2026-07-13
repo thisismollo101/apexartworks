@@ -11,15 +11,18 @@ import { SearchBar } from './SearchBar';
  * /admin surface, which is a separate context and must not show public chrome.
  */
 
-// Categories map to library search terms (there is no category column; the
-// two-layer search over title/summary/shot-description is the filter).
+// Real category tabs — each links to the paginated /browse facet backed by
+// the tag-derived clips.categories column (0004), not a keyword search.
 const CATEGORIES: { label: string; href: string }[] = [
-  { label: 'All', href: '/?view=all#library' },
-  { label: 'Food', href: '/search?q=food' },
-  { label: 'Beverage', href: '/search?q=drink' },
-  { label: 'Venue', href: '/search?q=venue' },
-  { label: 'Event', href: '/search?q=event' },
-  { label: 'Lifestyle', href: '/search?q=lifestyle' },
+  { label: 'All', href: '/browse' },
+  { label: 'Food', href: '/browse?cat=food' },
+  { label: 'Beverage', href: '/browse?cat=beverage' },
+  { label: 'Venue', href: '/browse?cat=venue' },
+  { label: 'Event', href: '/browse?cat=event' },
+  { label: 'Travel & Places', href: '/browse?cat=travel' },
+  { label: 'Characters & Animals', href: '/browse?cat=characters' },
+  { label: 'Action', href: '/browse?cat=action' },
+  { label: 'Lifestyle', href: '/browse?cat=lifestyle' },
 ];
 
 export function GlobalHeader() {

@@ -72,6 +72,25 @@ async function auditDatabase() {
     if (leaked.length) fail('client_clips leaks internal columns', leaked.join(', '));
     else ok(`client_clips exposes only: ${cols.join(', ')}`);
   }
+
+  // Categories (0004): must be present, and only ever the 8 fixed keys —
+  // a stray value would mean a raw internal tag leaked into the facet.
+  const CATEGORY_KEYS = ['food', 'beverage', 'venue', 'event', 'travel', 'characters', 'action', 'lifestyle'];
+  const { data: catRows, error: catErr } = await anon.from('client_clips').select('categories').limit(1000);
+  if (catErr || !catRows) {
+    fail('client_clips missing categories', catErr?.message ?? 'no rows');
+  } else {
+    const strays = new Set<string>();
+    let empty = 0;
+    for (const r of catRows as { categories: string[] | null }[]) {
+      if (!r.categories || r.categories.length === 0) empty++;
+      for (const c of r.categories ?? []) if (!CATEGORY_KEYS.includes(c)) strays.add(c);
+    }
+    if (strays.size) fail('categories contains non-enum values', [...strays].join(', '));
+    else ok(`categories values are within the 8 fixed keys (${catRows.length} rows checked)`);
+    if (empty) fail('clips with empty categories', `${empty} rows — the 0004 fallback should prevent this`);
+    else ok('every visible clip has at least one category');
+  }
 }
 
 async function auditSite(base: string) {
@@ -83,6 +102,8 @@ async function auditSite(base: string) {
     `/`,
     `/search?q=drone`,
     `/clip/APX-C-001`,
+    `/browse`,
+    `/browse?cat=venue`,
   ];
   for (const ep of endpoints) {
     try {
