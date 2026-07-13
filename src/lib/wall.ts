@@ -30,6 +30,9 @@ export const SHOT_CLIENT_FIELDS = [
   'shot_index',
   'description',
   'shot_deeplink',
+  // Owner override (Aidan, 2026-07-13): the per-shot verbatim prompt is now
+  // shown publicly alongside the English description, per explicit request.
+  'verbatim_text',
 ] as const;
 
 export type ClientClip = {
@@ -49,6 +52,7 @@ export type ClientShot = {
   shot_index: number;
   description: string | null;
   shot_deeplink: string | null;
+  verbatim_text: string | null;
 };
 
 /** Column list for .select() against the client views. */

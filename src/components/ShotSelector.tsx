@@ -70,7 +70,7 @@ export function ShotSelector({ clipId, shots }: { clipId: string; shots: ClientS
               <button
                 onClick={() => toggle(shot.shot_index)}
                 aria-pressed={isSelected}
-                className={`flex w-full items-start gap-4 px-2 py-5 text-left transition-colors duration-150 hover:bg-surface-hover ${
+                className={`flex w-full items-start gap-4 px-2 pt-5 text-left transition-colors duration-150 hover:bg-surface-hover ${
                   isSelected ? 'border-l-2 border-white bg-surface' : 'border-l-2 border-transparent'
                 }`}
               >
@@ -93,6 +93,18 @@ export function ShotSelector({ clipId, shots }: { clipId: string; shots: ClientS
                   )}
                 </span>
               </button>
+              {shot.verbatim_text && (
+                <div className="px-2 pb-5 pl-14">
+                  <div className="rounded-xl border border-hairline bg-surface p-4">
+                    <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-txt-muted">
+                      Verbatim prompt
+                    </p>
+                    <p className="whitespace-pre-wrap break-words font-mono text-[12.5px] leading-relaxed text-txt-secondary">
+                      {shot.verbatim_text}
+                    </p>
+                  </div>
+                </div>
+              )}
             </li>
           );
         })}
