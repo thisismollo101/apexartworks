@@ -31,6 +31,10 @@ export function GlobalHeader() {
   // The admin viewer is a separate, closed surface — no public chrome.
   if (pathname?.startsWith('/admin')) return null;
 
+  // On the homepage the search bar sits below the hero instead (page.tsx),
+  // so the header shows only the wordmark + category tabs there.
+  const showSearch = pathname !== '/';
+
   return (
     <header className="sticky top-0 z-50 border-b border-hairline bg-black/95 backdrop-blur supports-[backdrop-filter]:bg-black/80">
       <div className="mx-auto w-full max-w-[1200px] px-6 py-3 md:px-8">
@@ -42,9 +46,11 @@ export function GlobalHeader() {
           >
             Apex
           </Link>
-          <div className="min-w-0 flex-1">
-            <SearchBar />
-          </div>
+          {showSearch && (
+            <div className="min-w-0 flex-1">
+              <SearchBar />
+            </div>
+          )}
         </div>
 
         {/* Category tabs — a horizontal row directly under the search bar */}

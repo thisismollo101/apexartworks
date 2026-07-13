@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Sunburst } from '@/components/Sunburst';
 import { ClipCard } from '@/components/ClipCard';
+import { SearchBar } from '@/components/SearchBar';
 import { listClips, type SearchResult } from '@/lib/clips';
 
 export const dynamic = 'force-dynamic';
@@ -38,8 +39,13 @@ export default async function Home({
           Apex Artworks
         </h1>
         <p className="hero-rise-delayed mt-3 text-[16px] text-txt-secondary md:text-[18px]">
-          The hospitality film library
+          The Hospitality Film Library
         </p>
+        {/* Search lives directly under the hero on the homepage (the global
+            header hides its copy here so there is exactly one search bar). */}
+        <div className="hero-rise-delayed mt-10 w-full max-w-[560px]">
+          <SearchBar />
+        </div>
       </section>
 
       {/* SECTION 2 — the sample (default) or the full library grid (?view=all) */}
@@ -62,19 +68,26 @@ export default async function Home({
             No films yet. The library is being curated — check back soon.
           </p>
         ) : (
-          <div className="grid grid-cols-2 gap-6 md:grid-cols-3">
-            {clips.map((clip) => (
-              <ClipCard key={clip.clip_id} clip={clip} />
+          <div
+            className={
+              showAll
+                ? 'grid grid-cols-2 gap-6 md:grid-cols-3'
+                // Sample view on mobile: one film per row, and only the first
+                // four are shown (the rest appear from md up).
+                : 'grid grid-cols-1 gap-6 md:grid-cols-3'
+            }
+          >
+            {clips.map((clip, i) => (
+              <div key={clip.clip_id} className={!showAll && i >= 4 ? 'hidden md:block' : undefined}>
+                <ClipCard clip={clip} />
+              </div>
             ))}
           </div>
         )}
       </section>
 
-      {/* SECTION 4 — one closing statement, one action */}
+      {/* SECTION 4 — one action */}
       <section className="mx-auto mt-24 max-w-[720px] text-center">
-        <p className="text-[18px] text-txt-secondary">
-          Every film here passed the gate. Choose the beats you want and the Apex team takes it from there.
-        </p>
         {!showAll && (
           <Link
             href="/browse"
@@ -86,7 +99,7 @@ export default async function Home({
       </section>
 
       <footer className="mt-24 border-t border-hairline pt-8 text-center text-[13px] text-txt-muted">
-        Apex Artworks · hospitality film library
+        Apex Artworks · Hospitality Film Library
       </footer>
     </main>
   );

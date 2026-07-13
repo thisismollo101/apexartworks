@@ -9,7 +9,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Apex Artworks — The hospitality film library",
+  title: "Apex Artworks — The Hospitality Film Library",
   description:
     "A searchable library of cinematic hospitality films. Find your film, read its beats, select the ones you want.",
 };

@@ -110,7 +110,7 @@ export default async function ClipPage({
       )}
 
       <footer className="mt-24 border-t border-hairline pt-8 text-center text-[13px] text-txt-muted">
-        Apex Artworks · hospitality film library
+        Apex Artworks · Hospitality Film Library
       </footer>
     </main>
   );
