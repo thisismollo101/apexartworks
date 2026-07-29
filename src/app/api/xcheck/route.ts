@@ -72,35 +72,70 @@ export async function GET(req: Request) {
     });
   }
 
-  // Otherwise report reachability for the variant the site actually plays.
-  const probe = async (v: Variant) => {
+  // The site renders <video src>, and a browser sends a Referer (and, on a
+  // cross-origin media load, a Sec-Fetch-Site: cross-site) that a plain
+  // server-side fetch does not. If X's CDN gates on those, the server sees 200
+  // while every visitor sees a dead player — which is exactly the reported
+  // symptom. Probe each header shape separately to find out.
+  const BROWSER = {
+    'user-agent':
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
+    accept: 'video/webm,video/ogg,video/*;q=0.9,application/ogg;q=0.7,audio/*;q=0.6,*/*;q=0.5',
+    'accept-language': 'en-US,en;q=0.9',
+    range: 'bytes=0-2047',
+  };
+  const SITE = 'https://apexartworks.vercel.app';
+
+  const cases: { label: string; headers: Record<string, string> }[] = [
+    { label: 'no-referer (what the server sent before)', headers: { ...BROWSER } },
+    {
+      label: 'browser cross-site with referer (what a visitor actually sends)',
+      headers: {
+        ...BROWSER,
+        referer: `${SITE}/clip/APX-C-001`,
+        origin: SITE,
+        'sec-fetch-site': 'cross-site',
+        'sec-fetch-mode': 'no-cors',
+        'sec-fetch-dest': 'video',
+      },
+    },
+    {
+      label: 'referer only',
+      headers: { ...BROWSER, referer: `${SITE}/clip/APX-C-001` },
+    },
+    {
+      label: 'sec-fetch headers only',
+      headers: { ...BROWSER, 'sec-fetch-site': 'cross-site', 'sec-fetch-mode': 'no-cors', 'sec-fetch-dest': 'video' },
+    },
+  ];
+
+  const probe = async (v: Variant, headers: Record<string, string>) => {
     try {
-      const res = await fetch(v.url!, {
-        headers: { 'user-agent': 'Mozilla/5.0 (compatible; ApexArtworks/1.0)', range: 'bytes=0-2047' },
-        cache: 'no-store',
-      });
+      const res = await fetch(v.url!, { headers, cache: 'no-store' });
       const head = Buffer.from(await res.arrayBuffer());
-      // A valid MP4 opens with a 4-byte size then the ASCII box type 'ftyp'.
-      const ftyp = head.subarray(4, 8).toString('ascii');
       return {
-        url: v.url,
-        bitrate: v.bitrate,
         status: res.status,
         contentType: res.headers.get('content-type'),
         contentRange: res.headers.get('content-range'),
         acceptRanges: res.headers.get('accept-ranges'),
-        firstBoxIsFtyp: ftyp === 'ftyp',
+        // A valid MP4 opens with a 4-byte size then the ASCII box type 'ftyp'.
+        firstBoxIsFtyp: head.subarray(4, 8).toString('ascii') === 'ftyp',
         brand: head.subarray(8, 12).toString('ascii'),
+        bytes: head.length,
       };
     } catch (e) {
-      return { url: v.url, error: String(e) };
+      return { error: String(e) };
     }
   };
+
+  const results: Record<string, unknown> = {};
+  for (const c of cases) results[c.label] = await probe(largest, c.headers);
 
   return NextResponse.json({
     id,
     variantCount: mp4s.length,
-    playedBySite: await probe(largest),
+    playedUrl: largest.url,
+    results,
     smallest: { url: smallest.url, bitrate: smallest.bitrate },
   });
 }
