@@ -42,6 +42,9 @@ export const CATEGORY_KEYS = [
   'travel',
   'characters',
   'action',
+  'fashion',
+  'music',
+  'sport',
   'lifestyle',
 ] as const;
 export type CategoryKey = (typeof CATEGORY_KEYS)[number];

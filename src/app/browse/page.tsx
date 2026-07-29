@@ -16,6 +16,9 @@ const LABELS: Record<(typeof CATEGORY_KEYS)[number], string> = {
   travel: 'Travel & Places',
   characters: 'Characters & Animals',
   action: 'Action',
+  fashion: 'Fashion & Luxury',
+  music: 'Music & Dance',
+  sport: 'Sport',
   lifestyle: 'Lifestyle',
 };
 

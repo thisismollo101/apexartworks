@@ -75,7 +75,10 @@ async function auditDatabase() {
 
   // Categories (0004): must be present, and only ever the 8 fixed keys —
   // a stray value would mean a raw internal tag leaked into the facet.
-  const CATEGORY_KEYS = ['food', 'beverage', 'venue', 'event', 'travel', 'characters', 'action', 'lifestyle'];
+  const CATEGORY_KEYS = [
+    'food', 'beverage', 'venue', 'event', 'travel', 'characters', 'action',
+    'fashion', 'music', 'sport', 'lifestyle',
+  ];
   const { data: catRows, error: catErr } = await anon.from('client_clips').select('categories').limit(1000);
   if (catErr || !catRows) {
     fail('client_clips missing categories', catErr?.message ?? 'no rows');

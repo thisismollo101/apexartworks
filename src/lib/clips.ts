@@ -85,6 +85,12 @@ const CATEGORY_SYNONYMS: Record<string, CategoryKey> = {
   travel: 'travel', place: 'travel', places: 'travel',
   character: 'characters', characters: 'characters', animal: 'characters', animals: 'characters', mascot: 'characters',
   action: 'action',
+  fashion: 'fashion', luxury: 'fashion', couture: 'fashion', model: 'fashion',
+  runway: 'fashion', jewellery: 'fashion', jewelry: 'fashion', perfume: 'fashion',
+  music: 'music', dance: 'music', dancing: 'music', dancer: 'music', band: 'music',
+  song: 'music', concert: 'music', singer: 'music',
+  sport: 'sport', sports: 'sport', football: 'sport', soccer: 'sport',
+  athlete: 'sport', gym: 'sport', workout: 'sport',
   lifestyle: 'lifestyle',
 };
 
