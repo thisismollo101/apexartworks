@@ -1,6 +1,17 @@
 import Link from 'next/link';
 import type { SearchResult } from '@/lib/clips';
 
+/**
+ * Posters come from X's image CDN, which serves sized variants off the same
+ * URL. A browse page shows 60 cards, so ask for the small one rather than the
+ * full frame. Anything not on pbs.twimg.com (a self-hosted thumbnail later) is
+ * left exactly as it is.
+ */
+function posterFor(url: string): string {
+  if (!url.startsWith('https://pbs.twimg.com/') || url.includes('?')) return url;
+  return `${url}?name=small`;
+}
+
 const meta = (c: SearchResult) =>
   [c.runtime_s ? `${c.runtime_s}s` : null, c.shot_count ? `${c.shot_count} shot${c.shot_count === 1 ? '' : 's'}` : null]
     .filter(Boolean)
@@ -16,8 +27,10 @@ export function ClipCard({ clip }: { clip: SearchResult }) {
         {clip.thumbnail_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={clip.thumbnail_url}
+            src={posterFor(clip.thumbnail_url)}
             alt=""
+            loading="lazy"
+            decoding="async"
             className="h-full w-full object-cover transition-transform duration-150 group-hover:scale-[1.02]"
           />
         ) : (
