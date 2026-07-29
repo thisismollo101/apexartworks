@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { getClip, relatedClips } from '@/lib/clips';
 import { ShotSelector } from '@/components/ShotSelector';
 import { ClipCard } from '@/components/ClipCard';
+import { TweetEmbed, tweetIdFrom } from '@/components/TweetEmbed';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,6 +26,10 @@ export default async function ClipPage({
     .filter(Boolean)
     .join(' · ');
 
+  // No video_url assets are hosted yet, so the film plays from its X source
+  // in place rather than sending the visitor off-site.
+  const tweetId = tweetIdFrom(clip.source_url);
+
   return (
     <main className="mx-auto w-full max-w-[860px] flex-1 px-6 pb-16 md:px-8">
       <div className="py-6">
@@ -34,15 +39,21 @@ export default async function ClipPage({
       </div>
 
       {/* The film, dominant (Doc 04 §4: the product shown in motion) */}
-      <div className="relative aspect-video overflow-hidden rounded-2xl border border-hairline bg-surface">
+      <div
+        className={`relative overflow-hidden rounded-2xl border border-hairline bg-surface ${
+          clip.video_url || tweetId ? '' : 'aspect-video'
+        }`}
+      >
         {clip.video_url ? (
           <video
             src={clip.video_url}
             poster={clip.thumbnail_url ?? undefined}
             controls
             playsInline
-            className="h-full w-full object-contain"
+            className="aspect-video h-full w-full object-contain"
           />
+        ) : tweetId ? (
+          <TweetEmbed id={tweetId} title={clip.title} />
         ) : clip.source_url ? (
           <a
             href={clip.source_url}
@@ -75,7 +86,22 @@ export default async function ClipPage({
         {clip.summary && (
           <p className="mt-3 text-[16px] leading-relaxed text-txt-secondary">{clip.summary}</p>
         )}
-        <p className="mt-3 text-[13px] tracking-wide text-txt-muted">{meta}</p>
+        <p className="mt-3 text-[13px] tracking-wide text-txt-muted">
+          {meta}
+          {clip.source_url && (
+            <>
+              {' · '}
+              <a
+                href={clip.source_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline decoration-hairline underline-offset-4 transition-colors hover:text-txt-secondary"
+              >
+                open on X ↗
+              </a>
+            </>
+          )}
+        </p>
 
         {shots.length > 0 ? (
           <ShotSelector clipId={clip.clip_id} shots={shots} />
