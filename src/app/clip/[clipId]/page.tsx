@@ -3,7 +3,6 @@ import { notFound } from 'next/navigation';
 import { getClip, relatedClips } from '@/lib/clips';
 import { ShotSelector } from '@/components/ShotSelector';
 import { ClipCard } from '@/components/ClipCard';
-import { TweetEmbed } from '@/components/TweetEmbed';
 import { tweetIdFrom } from '@/lib/tweet';
 import { getTweetMedia } from '@/lib/tweetMedia';
 import { LikeButton } from '@/components/LikeButton';
@@ -41,9 +40,13 @@ export default async function ClipPage({
     .join(' · ');
 
   // No video assets are self-hosted, so the film plays from its X source in
-  // place rather than sending the visitor off-site. Preference order below:
-  // a hosted asset if one ever exists, then the source post's own MP4 (played
-  // in our player), then X's embed, then the bare link.
+  // place rather than sending the visitor off-site: a hosted asset if one ever
+  // exists, else the source post's own MP4 played in our player.
+  //
+  // When neither resolves the post is gone from X — deleted, or the account
+  // went protected — which is true of 74 of the 766 films. Those fall through
+  // to the source link rather than X's embed: the embed is only a script
+  // shell, and for exactly these posts it would render an empty broken frame.
   const tweetId = tweetIdFrom(clip.source_url);
   const media = clip.video_url || !tweetId ? null : await getTweetMedia(tweetId);
 
@@ -58,7 +61,7 @@ export default async function ClipPage({
       {/* The film, dominant (Doc 04 §4: the product shown in motion) */}
       <div
         className={`relative overflow-hidden rounded-2xl border border-hairline bg-surface ${
-          clip.video_url || media || tweetId ? '' : 'aspect-video'
+          clip.video_url || media ? '' : 'aspect-video'
         }`}
       >
         {clip.video_url ? (
@@ -79,8 +82,6 @@ export default async function ClipPage({
             className="w-full bg-black"
             style={{ aspectRatio: `${media.aspect[0]} / ${media.aspect[1]}` }}
           />
-        ) : tweetId ? (
-          <TweetEmbed id={tweetId} title={clip.title} />
         ) : clip.source_url ? (
           <a
             href={clip.source_url}
