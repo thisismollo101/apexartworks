@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 /**
  * Plays a source film inline instead of sending the visitor to X.
@@ -14,19 +14,13 @@ import { useEffect, useRef, useState } from 'react';
  * script runs on the page. The trade-off is that the iframe cannot size
  * itself, so we listen for the resize message the embed posts and apply the
  * height it asks for.
+ *
+ * `tweetIdFrom` lives in `@/lib/tweet`, not here — the clip page is a server
+ * component and cannot call a function exported from a `'use client'` module.
  */
-
-/** `https://x.com/user/status/123` → `123` (also accepts twitter.com). */
-export function tweetIdFrom(url: string | null | undefined): string | null {
-  if (!url) return null;
-  const m = /(?:twitter|x)\.com\/[^/]+\/status(?:es)?\/(\d+)/i.exec(url);
-  return m ? m[1] : null;
-}
 
 export function TweetEmbed({ id, title }: { id: string; title?: string | null }) {
   const [height, setHeight] = useState(560);
-  const [failed, setFailed] = useState(false);
-  const frameRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
     const onMessage = (e: MessageEvent) => {
@@ -39,26 +33,8 @@ export function TweetEmbed({ id, title }: { id: string; title?: string | null })
     return () => window.removeEventListener('message', onMessage);
   }, [id]);
 
-  // If X never loads (blocked network, deleted post), fall through to the link.
-  useEffect(() => {
-    const t = setTimeout(() => {
-      if (frameRef.current && height === 560) {
-        // still at the default height — the embed likely never reported in
-        try {
-          if (!frameRef.current.contentWindow) setFailed(true);
-        } catch {
-          /* cross-origin access throws — that means it DID load */
-        }
-      }
-    }, 6000);
-    return () => clearTimeout(t);
-  }, [height]);
-
-  if (failed) return null;
-
   return (
     <iframe
-      ref={frameRef}
       // dnt=true keeps X from using the view for ad personalisation
       src={`https://platform.twitter.com/embed/Tweet.html?id=${id}&theme=dark&dnt=true&hideCard=false&hideThread=true`}
       title={title ? `${title} — source film` : 'Source film'}

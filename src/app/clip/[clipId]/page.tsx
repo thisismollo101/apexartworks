@@ -3,7 +3,8 @@ import { notFound } from 'next/navigation';
 import { getClip, relatedClips } from '@/lib/clips';
 import { ShotSelector } from '@/components/ShotSelector';
 import { ClipCard } from '@/components/ClipCard';
-import { TweetEmbed, tweetIdFrom } from '@/components/TweetEmbed';
+import { TweetEmbed } from '@/components/TweetEmbed';
+import { tweetIdFrom } from '@/lib/tweet';
 
 export const dynamic = 'force-dynamic';
 
