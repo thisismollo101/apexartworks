@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Sunburst } from '@/components/Sunburst';
 import { ClipCard } from '@/components/ClipCard';
 import { SearchBar } from '@/components/SearchBar';
+import { CategoryMenu } from '@/components/CategoryMenu';
 import { listClips, type SearchResult } from '@/lib/clips';
 
 export const dynamic = 'force-dynamic';
@@ -41,10 +42,12 @@ export default async function Home({
         <p className="hero-rise-delayed mt-3 text-[16px] text-txt-secondary md:text-[18px]">
           The Hospitality Film Library
         </p>
-        {/* Search lives directly under the hero on the homepage (the global
-            header hides its copy here so there is exactly one search bar). */}
-        <div className="hero-rise-delayed mt-10 w-full max-w-[560px]">
+        {/* Search + the category bar live directly under the hero on the
+            homepage (the global header hides its copies here, so there is
+            exactly one of each). */}
+        <div className="hero-rise-delayed mt-10 flex w-full max-w-[560px] flex-col gap-2">
           <SearchBar />
+          <CategoryMenu />
         </div>
       </section>
 

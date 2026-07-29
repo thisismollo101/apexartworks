@@ -3,31 +3,18 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { SearchBar } from './SearchBar';
+import { CategoryMenu } from './CategoryMenu';
 
 /**
  * Persistent global header — pinned black bar on every public page (PRD §6:
  * search is the product, always within reach). Carries the search input and,
- * directly beneath it, a horizontal row of category tabs. Hidden on the closed
- * /admin surface, which is a separate context and must not show public chrome.
+ * directly beneath it, the category dropdown (Aidan, 2026-07-29: the old
+ * horizontal scrolling tab row is gone — one clean bar instead).
+ *
+ * On the homepage both bars live under the hero (see app/page.tsx), so the
+ * header there is just the wordmark. Hidden entirely on the closed /admin
+ * surface, which must not show public chrome.
  */
-
-// Real category tabs — each links to the paginated /browse facet backed by
-// the tag-derived clips.categories column (0004), not a keyword search.
-const CATEGORIES: { label: string; href: string }[] = [
-  { label: 'All', href: '/browse' },
-  { label: 'Food', href: '/browse?cat=food' },
-  { label: 'Beverage', href: '/browse?cat=beverage' },
-  { label: 'Venue', href: '/browse?cat=venue' },
-  { label: 'Event', href: '/browse?cat=event' },
-  { label: 'Travel & Places', href: '/browse?cat=travel' },
-  { label: 'Characters & Animals', href: '/browse?cat=characters' },
-  { label: 'Action', href: '/browse?cat=action' },
-  { label: 'Fashion & Luxury', href: '/browse?cat=fashion' },
-  { label: 'Music & Dance', href: '/browse?cat=music' },
-  { label: 'Sport', href: '/browse?cat=sport' },
-  { label: 'Art & Craft', href: '/browse?cat=art' },
-  { label: 'Lifestyle', href: '/browse?cat=lifestyle' },
-];
 
 export function GlobalHeader() {
   const pathname = usePathname();
@@ -35,9 +22,7 @@ export function GlobalHeader() {
   // The admin viewer is a separate, closed surface — no public chrome.
   if (pathname?.startsWith('/admin')) return null;
 
-  // On the homepage the search bar sits below the hero instead (page.tsx),
-  // so the header shows only the wordmark + category tabs there.
-  const showSearch = pathname !== '/';
+  const isHome = pathname === '/';
 
   return (
     <header className="sticky top-0 z-50 border-b border-hairline bg-black/95 backdrop-blur supports-[backdrop-filter]:bg-black/80">
@@ -50,28 +35,19 @@ export function GlobalHeader() {
           >
             Apex
           </Link>
-          {showSearch && (
+          {!isHome && (
             <div className="min-w-0 flex-1">
               <SearchBar />
             </div>
           )}
         </div>
 
-        {/* Category tabs — a horizontal row directly under the search bar */}
-        <nav
-          aria-label="Categories"
-          className="mt-3 flex items-center gap-1 overflow-x-auto pb-1"
-        >
-          {CATEGORIES.map((c) => (
-            <Link
-              key={c.label}
-              href={c.href}
-              className="shrink-0 rounded-full border border-hairline px-4 py-1.5 text-[13px] font-medium text-txt-secondary transition-colors hover:border-txt-muted hover:text-txt"
-            >
-              {c.label}
-            </Link>
-          ))}
-        </nav>
+        {/* The category bar — directly beneath the search bar */}
+        {!isHome && (
+          <div className="mt-2">
+            <CategoryMenu />
+          </div>
+        )}
       </div>
     </header>
   );
