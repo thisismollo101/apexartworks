@@ -30,7 +30,9 @@ export function CategoryMenu() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState('');
+  const [maxH, setMaxH] = useState<number>();
   const ref = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
 
   // Read ?cat= on the client after mount. (Deliberately not useSearchParams:
   // this renders inside the layout, and that hook forces a Suspense boundary
@@ -39,6 +41,23 @@ export function CategoryMenu() {
     const cat = new URLSearchParams(window.location.search).get('cat') ?? '';
     setActive(pathname === '/browse' ? cat : '');
   }, [pathname]);
+
+  // Fit the panel to the space left below the bar, so it never runs off the
+  // bottom of the window (the bar sits low on the homepage).
+  useEffect(() => {
+    if (!open) return;
+    const fit = () => {
+      const r = btnRef.current?.getBoundingClientRect();
+      if (r) setMaxH(Math.max(180, Math.round(window.innerHeight - r.bottom - 24)));
+    };
+    fit();
+    window.addEventListener('resize', fit);
+    window.addEventListener('scroll', fit, { passive: true });
+    return () => {
+      window.removeEventListener('resize', fit);
+      window.removeEventListener('scroll', fit);
+    };
+  }, [open]);
 
   // Close on outside click or Escape.
   useEffect(() => {
@@ -67,6 +86,7 @@ export function CategoryMenu() {
   return (
     <div ref={ref} className="relative w-full">
       <button
+        ref={btnRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="listbox"
@@ -95,7 +115,9 @@ export function CategoryMenu() {
         <ul
           role="listbox"
           aria-label="Categories"
-          className="absolute left-0 right-0 z-50 mt-2 max-h-[60vh] overflow-y-auto rounded-xl border border-hairline bg-black/95 p-1 backdrop-blur"
+          // Fully opaque: a translucent panel let the film grid show through.
+          style={{ maxHeight: maxH }}
+          className="absolute left-0 right-0 z-50 mt-2 overflow-y-auto overscroll-contain rounded-xl border border-hairline bg-black p-1 shadow-[0_18px_48px_rgba(0,0,0,0.92)]"
         >
           {CATEGORIES.map((c) => {
             const selected = c.key === active;

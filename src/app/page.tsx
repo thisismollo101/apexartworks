@@ -45,7 +45,11 @@ export default async function Home({
         {/* Search + the category bar live directly under the hero on the
             homepage (the global header hides its copies here, so there is
             exactly one of each). */}
-        <div className="hero-rise-delayed mt-10 flex w-full max-w-[560px] flex-col gap-2">
+        {/* relative z-40 is load-bearing: `hero-rise-delayed` ends on a
+            transform, which creates a stacking context — without an explicit
+            z-index the category dropdown is trapped inside it and the film
+            grid below paints over the open panel. */}
+        <div className="hero-rise-delayed relative z-40 mt-10 flex w-full max-w-[560px] flex-col gap-2">
           <SearchBar />
           <CategoryMenu />
         </div>
