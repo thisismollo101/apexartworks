@@ -19,6 +19,7 @@ const LABELS: Record<(typeof CATEGORY_KEYS)[number], string> = {
   fashion: 'Fashion & Luxury',
   music: 'Music & Dance',
   sport: 'Sport',
+  art: 'Art & Craft',
   lifestyle: 'Lifestyle',
 };
 

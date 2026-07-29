@@ -77,7 +77,7 @@ async function auditDatabase() {
   // a stray value would mean a raw internal tag leaked into the facet.
   const CATEGORY_KEYS = [
     'food', 'beverage', 'venue', 'event', 'travel', 'characters', 'action',
-    'fashion', 'music', 'sport', 'lifestyle',
+    'fashion', 'music', 'sport', 'art', 'lifestyle',
   ];
   const { data: catRows, error: catErr } = await anon.from('client_clips').select('categories').limit(1000);
   if (catErr || !catRows) {

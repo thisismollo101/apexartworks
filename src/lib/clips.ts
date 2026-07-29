@@ -91,6 +91,8 @@ const CATEGORY_SYNONYMS: Record<string, CategoryKey> = {
   song: 'music', concert: 'music', singer: 'music',
   sport: 'sport', sports: 'sport', football: 'sport', soccer: 'sport',
   athlete: 'sport', gym: 'sport', workout: 'sport',
+  art: 'art', artist: 'art', painting: 'art', craft: 'art', museum: 'art',
+  sculpture: 'art', mural: 'art', manga: 'art',
   lifestyle: 'lifestyle',
 };
 

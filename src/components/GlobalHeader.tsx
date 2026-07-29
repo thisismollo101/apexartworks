@@ -25,6 +25,7 @@ const CATEGORIES: { label: string; href: string }[] = [
   { label: 'Fashion & Luxury', href: '/browse?cat=fashion' },
   { label: 'Music & Dance', href: '/browse?cat=music' },
   { label: 'Sport', href: '/browse?cat=sport' },
+  { label: 'Art & Craft', href: '/browse?cat=art' },
   { label: 'Lifestyle', href: '/browse?cat=lifestyle' },
 ];
 
