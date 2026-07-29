@@ -1,5 +1,8 @@
 /**
- * TEMPORARY diagnostic route — delete once film playback is settled.
+ * TEMPORARY diagnostic route (/api/xprobe) — delete once playback is settled.
+ *
+ * Note the folder is not named `_probe`: the App Router treats a leading
+ * underscore as a private folder and excludes it from routing.
  *
  * This session's container cannot reach x.com (egress policy), so the only way
  * to learn what X actually serves for our source posts is to ask from a Vercel
