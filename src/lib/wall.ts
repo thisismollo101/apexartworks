@@ -5,10 +5,16 @@
  * Every client-facing API response is built by picking exactly these fields.
  *
  * OWNER OVERRIDE (Aidan, 2026-07-13): shot `verbatim_text` and clip
- * `source_url` are now DELIBERATELY client-facing (open showcase) and are in
- * the allowlists below. The wall still keeps everything else out — clip-level
- * `verbatim_prompt` (the full raw prompt, admin-only), the internal tags, and
- * the gate fields never appear in any client response, by construction.
+ * `source_url` are DELIBERATELY client-facing (open showcase).
+ *
+ * OWNER OVERRIDE (Aidan, 2026-07-29): clip `verbatim_prompt` — the full raw
+ * prompt — is now client-facing too, so the clip page can show the whole
+ * prompt in one block alongside the per-shot breakdown (0009). The global
+ * "Style & Feel" / "Audio" directives exist only in this column.
+ *
+ * The wall still keeps everything else out — the internal tags, the gate
+ * fields, and prompt_health / source_prompt_file never appear in any client
+ * response, by construction.
  *
  * The database enforces the same wall independently (RLS deny-all on the
  * master tables; anon can only read the client_clips / client_shots views,
@@ -31,6 +37,9 @@ export const CLIP_CLIENT_FIELDS = [
   // Curated browse facets (0004): fixed-enum values derived at load time from
   // the internal tags. The raw tags themselves stay behind the wall.
   'categories',
+  // Owner override (Aidan, 2026-07-29): the full raw prompt, shown as one
+  // block on the clip page next to the per-shot breakdown (0009).
+  'verbatim_prompt',
 ] as const;
 
 /** The only values `categories` may ever contain (0004_categories.sql). */
@@ -71,6 +80,7 @@ export type ClientClip = {
   thumbnail_url: string | null;
   source_url: string | null;
   categories: string[] | null;
+  verbatim_prompt: string | null;
 };
 
 export type ClientShot = {

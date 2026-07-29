@@ -2,16 +2,21 @@
  * WALL AUDIT — must pass pre- and post-deploy (PRD §5).
  *
  * OWNER OVERRIDE (Aidan, 2026-07-13): shot `verbatim_text` and clip `source_url`
- * are now DELIBERATELY public (Ads-of-the-World-style showcase). They are no
- * longer breaches. The wall now protects the REMAINING internal fields:
- * clip-level `verbatim_prompt` (the full raw prompt, admin-only), all gate
- * fields, and the internal shot tags.
+ * are DELIBERATELY public (Ads-of-the-World-style showcase).
+ *
+ * OWNER OVERRIDE (Aidan, 2026-07-29): clip `verbatim_prompt` — the full raw
+ * prompt — is public too (0009), shown as one block on the clip page beside
+ * the per-shot breakdown. It is no longer a breach.
+ *
+ * The wall now protects the REMAINING internal fields: all gate fields, the
+ * internal shot tags, and prompt_health / source_prompt_file.
  *
  * Verifies, from OUTSIDE the trusted server, that no route returns those:
  *  1. anon key + master tables (clips/shots/client_selection/floor_log)
  *     → permission denied / zero rows
  *  2. anon key + client views → only the allowlisted columns
- *  3. anon key + client_shots → verbatim_text IS present (intended public)
+ *  3. anon key + client_shots → verbatim_text IS present (intended public),
+ *     and client_clips → verbatim_prompt IS present (intended public)
  *  4. every client HTTP endpoint, grepped for still-internal field names → absent
  *  5. a cut clip 404s on the clip endpoint and never appears in lists
  *
@@ -25,10 +30,11 @@
  */
 import { createClient } from '@supabase/supabase-js';
 
-// Fields that must STILL never reach a client (verbatim_text + source_url are
-// intentionally excluded per the owner override — they are now public).
+// Fields that must STILL never reach a client. verbatim_text, source_url and
+// verbatim_prompt are intentionally excluded — they are public per the owner
+// overrides of 2026-07-13 and 2026-07-29.
 const FORBIDDEN_FIELDS = [
-  'verbatim_prompt', 'verdict', 'cut_reason',
+  'verdict', 'cut_reason',
   'step1_grounded_brand_safe', 'home_route', 'distinctiveness', 'register',
   'product_fit', 'prompt_health', 'risk_flags', 'ip_flags', 'fix_note',
   'calibration_note', 'gate_confidence', 'gate_notes', 'subject_role',
@@ -62,6 +68,11 @@ async function auditDatabase() {
   const { error: colErr } = await anon.from('client_shots').select('verbatim_text').limit(1);
   if (!colErr) ok('client_shots exposes verbatim_text (intended public per owner override)');
   else fail('client_shots missing verbatim_text', 'owner override expects it public — apply 0003');
+
+  // Owner override (0009): the full raw prompt is now intended public too.
+  const { error: fullErr } = await anon.from('client_clips').select('verbatim_prompt').limit(1);
+  if (!fullErr) ok('client_clips exposes verbatim_prompt (intended public per owner override)');
+  else fail('client_clips missing verbatim_prompt', 'owner override expects it public — apply 0009');
 
   const { data: viewRow, error: viewErr } = await anon.from('client_clips').select('*').limit(1);
   if (viewErr) {

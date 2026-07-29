@@ -6,6 +6,7 @@ import { ClipCard } from '@/components/ClipCard';
 import { tweetIdFrom } from '@/lib/tweet';
 import { getTweetMedia } from '@/lib/tweetMedia';
 import { LikeButton } from '@/components/LikeButton';
+import { CopyBlock } from '@/components/CopyBlock';
 
 export const dynamic = 'force-dynamic';
 
@@ -147,6 +148,23 @@ export default async function ClipPage({
             <p className="py-10 text-center text-[15px] text-txt-secondary">
               The beats for this film are coming online. Check back shortly.
             </p>
+          </section>
+        )}
+
+        {/* The same prompt again, whole and in one piece.
+            The per-shot boxes above are the breakdown; this is the prompt as
+            it was originally written — scene headers and the trailing global
+            direction (style, feel, audio) that belongs to no single shot — so
+            it can be copied straight out in one go. */}
+        {clip.verbatim_prompt && (
+          <section className="mt-14">
+            <div className="mb-4 flex items-baseline justify-between border-b border-hairline pb-3">
+              <h2 className="text-[12px] font-semibold uppercase tracking-[0.16em] text-txt-muted">
+                Full prompt
+              </h2>
+              <span className="text-[13px] text-txt-muted">every scene, in one block</span>
+            </div>
+            <CopyBlock text={clip.verbatim_prompt} label="Verbatim — complete" />
           </section>
         )}
       </div>
