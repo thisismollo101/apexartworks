@@ -10,7 +10,7 @@ export function ClipCard({ clip }: { clip: SearchResult }) {
   return (
     <Link
       href={`/clip/${clip.clip_id}`}
-      className="group block overflow-hidden rounded-2xl border border-hairline bg-surface transition-colors duration-150 hover:bg-surface-hover"
+      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-hairline bg-surface transition-colors duration-150 hover:bg-surface-hover"
     >
       <div className="relative aspect-video overflow-hidden bg-black">
         {clip.thumbnail_url ? (
@@ -26,12 +26,15 @@ export function ClipCard({ clip }: { clip: SearchResult }) {
           </div>
         )}
       </div>
-      <div className="p-4">
+      <div className="flex flex-1 flex-col p-4">
         <h3 className="text-[17px] font-bold leading-snug text-txt">{clip.title}</h3>
+        {/* Full summary, not truncated — the card should say what the film is
+            about without a click through (Aidan, 2026-07-29). */}
         {clip.summary && (
-          <p className="mt-1 truncate text-[14px] text-txt-secondary">{clip.summary}</p>
+          <p className="mt-2 text-[14px] leading-relaxed text-txt-secondary">{clip.summary}</p>
         )}
-        <p className="mt-2 text-[12px] tracking-wide text-txt-muted">
+        {/* mt-auto keeps the runtime line on the baseline of every card in a row */}
+        <p className="mt-auto pt-3 text-[12px] tracking-wide text-txt-muted">
           {meta(clip)}
           {clip.match_hint && <span className="ml-2 border-l border-hairline pl-2">{clip.match_hint}</span>}
         </p>
