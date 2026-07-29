@@ -10,6 +10,17 @@ import { LikeButton } from '@/components/LikeButton';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * The film is served from X's CDN, which hotlink-protects on Referer: a
+ * request carrying one gets 403, the identical request without one gets the
+ * video. Chrome sends `Referer: <our origin>` by default on a cross-origin
+ * media load, so every <video> on this page failed to load while the same URL
+ * fetched fine server-side (verified 2026-07-29 — 403 with Referer, 206
+ * without). Media elements have no referrerpolicy attribute, so the policy has
+ * to be set for the document, which covers the video request.
+ */
+export const metadata = { referrer: 'no-referrer' as const };
+
 export default async function ClipPage({
   params,
 }: {
