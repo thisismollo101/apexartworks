@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 
 /**
@@ -9,8 +9,15 @@ import { usePathname, useRouter } from 'next/navigation';
  * one clean line, click the arrow, pick a category.
  */
 
+/**
+ * `liked` is not a category on the film — it is the visitor's own list, kept in
+ * this browser — so it routes to /liked rather than /browse?cat=.
+ */
+const LIKED = 'liked';
+
 const CATEGORIES: { key: string; label: string }[] = [
   { key: '', label: 'All films' },
+  { key: LIKED, label: 'Liked Films' },
   { key: 'food', label: 'Food' },
   { key: 'beverage', label: 'Beverage' },
   { key: 'venue', label: 'Venue' },
@@ -25,22 +32,36 @@ const CATEGORIES: { key: string; label: string }[] = [
   { key: 'lifestyle', label: 'Lifestyle' },
 ];
 
+/**
+ * The query string, as an external store. Navigation already re-renders this
+ * component through usePathname, so there is nothing to subscribe to — the
+ * snapshot is simply re-read. Returns a primitive, so no cached identity is
+ * needed to keep useSyncExternalStore stable.
+ */
+const subscribeNever = () => () => {};
+const readSearch = () => window.location.search;
+const readSearchOnServer = () => '';
+
 export function CategoryMenu() {
   const router = useRouter();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const [active, setActive] = useState('');
   const [maxH, setMaxH] = useState<number>();
   const ref = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
 
-  // Read ?cat= on the client after mount. (Deliberately not useSearchParams:
-  // this renders inside the layout, and that hook forces a Suspense boundary
-  // on every statically rendered page.)
-  useEffect(() => {
-    const cat = new URLSearchParams(window.location.search).get('cat') ?? '';
-    setActive(pathname === '/browse' ? cat : '');
-  }, [pathname]);
+  // Read ?cat= from the browser rather than useSearchParams: this renders
+  // inside the layout, and that hook would force a Suspense boundary on every
+  // statically rendered page. Read through useSyncExternalStore so it is not
+  // copied into state inside an effect; usePathname re-renders on navigation,
+  // and getSnapshot re-reads then, which is what keeps it current.
+  const search = useSyncExternalStore(subscribeNever, readSearch, readSearchOnServer);
+  const active =
+    pathname === '/liked'
+      ? LIKED
+      : pathname === '/browse'
+        ? (new URLSearchParams(search).get('cat') ?? '')
+        : '';
 
   // Fit the panel to the space left below the bar, so it never runs off the
   // bottom of the window (the bar sits low on the homepage).
@@ -80,6 +101,7 @@ export function CategoryMenu() {
 
   const go = (key: string) => {
     setOpen(false);
+    if (key === LIKED) return router.push('/liked');
     router.push(key ? `/browse?cat=${key}` : '/browse');
   };
 

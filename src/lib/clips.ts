@@ -58,6 +58,27 @@ export async function listClips(limit = 60, offset = 0, category?: CategoryKey):
   return ranked.map((r) => ({ ...toClientClip(r), match_hint: null }));
 }
 
+/**
+ * Clips by explicit id, for the liked list.
+ *
+ * Likes live in the visitor's own browser, so the page holds ids and asks the
+ * server to resolve them. Read through client_clips like everything else, so a
+ * cut or unknown id simply drops out rather than leaking. Returned in the
+ * caller's order, newest like first.
+ */
+export async function clipsByIds(ids: string[]): Promise<SearchResult[]> {
+  const wanted = ids.filter((id) => typeof id === 'string' && id.length <= 64).slice(0, 200);
+  if (wanted.length === 0) return [];
+  const db = supabaseServer();
+  const { data, error } = await db.from('client_clips').select(CLIP_SELECT).in('clip_id', wanted);
+  if (error) throw new Error(error.message);
+  const found = new Map(asRows(data).map((r) => [r.clip_id, r]));
+  return wanted
+    .map((id) => found.get(id))
+    .filter((r): r is Row => Boolean(r))
+    .map((r) => ({ ...toClientClip(r), match_hint: null }));
+}
+
 /** Total visible clips (optionally within one category) — drives pagination. */
 export async function countClips(category?: CategoryKey): Promise<number> {
   const db = supabaseServer();

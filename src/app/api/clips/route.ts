@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { asCategory, countClips, listClips, searchClips } from '@/lib/clips';
+import { asCategory, clipsByIds, countClips, listClips, searchClips } from '@/lib/clips';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
+    // ?ids=A,B,C — used by the liked list, whose ids live in the browser.
+    const ids = req.nextUrl.searchParams.get('ids');
+    if (ids !== null) {
+      const clips = await clipsByIds(ids.split(',').map((s) => s.trim()).filter(Boolean));
+      return NextResponse.json({ clips, count: clips.length });
+    }
+
     const q = req.nextUrl.searchParams.get('q')?.trim() ?? '';
     const cat = asCategory(req.nextUrl.searchParams.get('cat') ?? undefined);
     const limit = Math.min(Number(req.nextUrl.searchParams.get('limit')) || 60, 100);

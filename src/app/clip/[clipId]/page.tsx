@@ -5,6 +5,8 @@ import { ShotSelector } from '@/components/ShotSelector';
 import { ClipCard } from '@/components/ClipCard';
 import { TweetEmbed } from '@/components/TweetEmbed';
 import { tweetIdFrom } from '@/lib/tweet';
+import { getTweetMedia } from '@/lib/tweetMedia';
+import { LikeButton } from '@/components/LikeButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,9 +29,12 @@ export default async function ClipPage({
     .filter(Boolean)
     .join(' · ');
 
-  // No video_url assets are hosted yet, so the film plays from its X source
-  // in place rather than sending the visitor off-site.
+  // No video assets are self-hosted, so the film plays from its X source in
+  // place rather than sending the visitor off-site. Preference order below:
+  // a hosted asset if one ever exists, then the source post's own MP4 (played
+  // in our player), then X's embed, then the bare link.
   const tweetId = tweetIdFrom(clip.source_url);
+  const media = clip.video_url || !tweetId ? null : await getTweetMedia(tweetId);
 
   return (
     <main className="mx-auto w-full max-w-[860px] flex-1 px-6 pb-16 md:px-8">
@@ -42,7 +47,7 @@ export default async function ClipPage({
       {/* The film, dominant (Doc 04 §4: the product shown in motion) */}
       <div
         className={`relative overflow-hidden rounded-2xl border border-hairline bg-surface ${
-          clip.video_url || tweetId ? '' : 'aspect-video'
+          clip.video_url || media || tweetId ? '' : 'aspect-video'
         }`}
       >
         {clip.video_url ? (
@@ -52,6 +57,16 @@ export default async function ClipPage({
             controls
             playsInline
             className="aspect-video h-full w-full object-contain"
+          />
+        ) : media ? (
+          <video
+            src={media.mp4}
+            poster={media.poster ?? clip.thumbnail_url ?? undefined}
+            controls
+            playsInline
+            preload="metadata"
+            className="w-full bg-black"
+            style={{ aspectRatio: `${media.aspect[0]} / ${media.aspect[1]}` }}
           />
         ) : tweetId ? (
           <TweetEmbed id={tweetId} title={clip.title} />
@@ -103,6 +118,10 @@ export default async function ClipPage({
             </>
           )}
         </p>
+
+        <div className="mt-5">
+          <LikeButton clipId={clip.clip_id} />
+        </div>
 
         {shots.length > 0 ? (
           <ShotSelector clipId={clip.clip_id} shots={shots} />
