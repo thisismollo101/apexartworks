@@ -31,7 +31,11 @@ async function probe(label: string, url: string, headers: Record<string, string>
 
 export async function GET(req: Request) {
   const id = new URL(req.url).searchParams.get('id');
-  if (!id) return NextResponse.json({ error: 'pass ?id=<status id>' }, { status: 400 });
+  // Digits only. This value is interpolated into the URLs below, so anything
+  // else could redirect the fetches at a host of the caller's choosing.
+  if (!id || !/^\d{1,25}$/.test(id)) {
+    return NextResponse.json({ error: 'pass ?id=<numeric status id>' }, { status: 400 });
+  }
 
   const results = await Promise.all([
     probe('syndication', `https://cdn.syndication.twimg.com/tweet-result?id=${id}&lang=en&token=${syndicationToken(id)}`),
