@@ -88,11 +88,28 @@ function main() {
 
   const rows = loadSourceLibrary().filter((r) => !r.prefilter_flag);
 
-  const tally = { noHeadline: 0, cut: 0, review: 0, keep: 0, noShots: 0 };
+  const tally = { noHeadline: 0, cut: 0, review: 0, keep: 0, noShots: 0, dupe: 0 };
   type Unit = { clip: string; shots: string[] };
   const units: Unit[] = [];
 
+  /**
+   * The sheet holds the same film under more than one gallery id — three pairs
+   * share a source_url and one of those also shares its prompt verbatim.
+   * Distinct ids mean distinct clip_ids, so the primary key does NOT catch
+   * this; without an explicit check the library would show the same film
+   * twice. First occurrence wins.
+   */
+  const seenPrompt = new Set<string>();
+  const seenSource = new Set<string>();
+  const normPrompt = (p: string) => p.toLowerCase().replace(/\s+/g, ' ').trim();
+
   for (const r of rows) {
+    const pk = normPrompt(r.verbatim_prompt);
+    if (seenPrompt.has(pk) || (r.source_url && seenSource.has(r.source_url))) {
+      tally.dupe++;
+      continue;
+    }
+
     const { title, summary } = deriveHeadline(r.verbatim_prompt);
     // No film described — only direction to the generator. Nothing to show.
     if (title === 'Untitled Film' || !summary) { tally.noHeadline++; continue; }
@@ -104,6 +121,10 @@ function main() {
     const d = offlineDecompose({ title, summary, verbatim_prompt: r.verbatim_prompt });
     if (d.shots.length === 0) { tally.noShots++; continue; }
     tally.keep++;
+    // Claimed only once the row is actually loading, so a row dropped by the
+    // gate never suppresses a later good row that shares its post.
+    seenPrompt.add(pk);
+    if (r.source_url) seenSource.add(r.source_url);
 
     const clipId = `APX-C-${r.video_id}`;
     const author = authorFrom(r.source_url);
@@ -170,6 +191,7 @@ ${SHOT_INSERT(shotValues)}
   console.log(`  gate cut:               ${tally.cut}`);
   console.log(`  gate review (held):     ${tally.review}`);
   console.log(`  no shots parsed:        ${tally.noShots}`);
+  console.log(`  same film, second id:   ${tally.dupe}`);
   console.log(`  LOADING:                ${tally.keep} clips · ${totalShots} shots`);
   console.log(`\nWrote ${n} chunk(s) to ${OUT}/library_load_NNN.sql`);
 }
