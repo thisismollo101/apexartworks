@@ -105,6 +105,7 @@ async function auditDatabase() {
   const CATEGORY_KEYS = [
     'food', 'beverage', 'venue', 'event', 'travel', 'characters', 'action',
     'fashion', 'music', 'sport', 'art', 'lifestyle',
+    'automotive', 'nature', 'tech', 'family', 'heritage', 'beauty', 'romance', 'scifi',
   ];
   const { data: catRows, error: catErr } = await anon.from('client_clips').select('categories').limit(1000);
   if (catErr || !catRows) {
@@ -117,7 +118,7 @@ async function auditDatabase() {
       for (const c of r.categories ?? []) if (!CATEGORY_KEYS.includes(c)) strays.add(c);
     }
     if (strays.size) fail('categories contains non-enum values', [...strays].join(', '));
-    else ok(`categories values are within the 8 fixed keys (${catRows.length} rows checked)`);
+    else ok(`categories values are within the fixed key set (${catRows.length} rows checked)`);
     if (empty) fail('clips with empty categories', `${empty} rows — the 0004 fallback should prevent this`);
     else ok('every visible clip has at least one category');
   }

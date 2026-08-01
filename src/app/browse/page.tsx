@@ -21,6 +21,14 @@ const LABELS: Record<(typeof CATEGORY_KEYS)[number], string> = {
   sport: 'Sport',
   art: 'Art & Craft',
   lifestyle: 'Lifestyle',
+  automotive: 'Cars & Motoring',
+  nature: 'Nature & Outdoors',
+  tech: 'Tech & Devices',
+  family: 'Family & Kids',
+  heritage: 'Culture & Heritage',
+  beauty: 'Beauty & Wellness',
+  romance: 'Romance',
+  scifi: 'Sci-Fi & Fantasy',
 };
 
 const pageHref = (page: number, cat?: string) =>

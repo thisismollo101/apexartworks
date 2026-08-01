@@ -30,6 +30,14 @@ const CATEGORIES: { key: string; label: string }[] = [
   { key: 'sport', label: 'Sport' },
   { key: 'art', label: 'Art & Craft' },
   { key: 'lifestyle', label: 'Lifestyle' },
+  { key: 'automotive', label: 'Cars & Motoring' },
+  { key: 'nature', label: 'Nature & Outdoors' },
+  { key: 'tech', label: 'Tech & Devices' },
+  { key: 'family', label: 'Family & Kids' },
+  { key: 'heritage', label: 'Culture & Heritage' },
+  { key: 'beauty', label: 'Beauty & Wellness' },
+  { key: 'romance', label: 'Romance' },
+  { key: 'scifi', label: 'Sci-Fi & Fantasy' },
 ];
 
 /**

@@ -115,6 +115,14 @@ const CATEGORY_SYNONYMS: Record<string, CategoryKey> = {
   art: 'art', artist: 'art', painting: 'art', craft: 'art', museum: 'art',
   sculpture: 'art', mural: 'art', manga: 'art',
   lifestyle: 'lifestyle',
+  car: 'automotive', cars: 'automotive', driving: 'automotive', motor: 'automotive',
+  nature: 'nature', outdoors: 'nature', landscape: 'nature', wildlife: 'nature',
+  tech: 'tech', technology: 'tech', gadget: 'tech', robot: 'scifi',
+  family: 'family', kids: 'family', children: 'family', child: 'family',
+  heritage: 'heritage', culture: 'heritage', traditional: 'heritage', temple: 'heritage',
+  beauty: 'beauty', skincare: 'beauty', wellness: 'beauty', spa: 'beauty',
+  romance: 'romance', romantic: 'romance', love: 'romance', couple: 'romance',
+  scifi: 'scifi', futuristic: 'scifi', cyberpunk: 'scifi', alien: 'scifi',
 };
 
 /** Split a phrase into deduped, stop-word-free keywords. */
@@ -125,14 +133,65 @@ const tokenize = (q: string): string[] => [
 ];
 
 /**
- * Tokenized two-layer search with relevance ranking (PRD §6, upgraded):
- * the phrase is split into keywords ("romantic date night" → romantic, date,
- * night) and a clip surfaces when ANY keyword matches its title/summary, a
- * shot description, or a category tag (with basic synonyms, e.g. drinks →
- * beverage). Ranking: exact-phrase matches first, then by how many distinct
- * keywords a clip matched, with the distinctiveness order as the tiebreak.
+ * Search (rewritten, 0012).
+ *
+ * EVERY WORD MUST BE PRESENT. The old version split the phrase and surfaced a
+ * clip matching ANY keyword, so "girl eating" returned everything containing
+ * "girl" or "eating". It also matched substrings, so "car" hit "card", "scar"
+ * and "Carnival", and it never looked at the prompt at all — the richest text
+ * a clip has. Measured on the live library: "car" returned 516 clips by
+ * substring, of which only 110 contained the actual word.
+ *
+ * The work now happens in public.search_clips (0012): a weighted full-text
+ * index over title, summary, the whole prompt and every shot's text, with AND
+ * semantics and English stemming, so "eating" also finds "eat" and "eats".
+ * Title/summary outrank the prompt, which outranks shot text, so a film ABOUT
+ * pizza comes above one that mentions pizza once.
+ *
+ * Relevance is the returned order — deliberately NOT re-sorted by
+ * distinctiveness here, which would override what the user actually asked for.
+ *
+ * If a strict search finds very little, a category tier is appended BELOW it
+ * ("pizza" → the food shelf), clearly labelled so a broadened result is never
+ * mistaken for a direct hit.
  */
+const BROADEN_BELOW = 8;
+
 export async function searchClips(q: string, limit = 60): Promise<SearchResult[]> {
+  const db = supabaseServer();
+  const phrase = q.trim();
+  if (!phrase) return [];
+
+  const { data, error } = await db.rpc('search_clips', { q: phrase, lim: limit });
+  if (error) throw new Error(error.message);
+
+  const rows = asRows(data);
+  const strict: SearchResult[] = rows.map((r) => ({
+    ...toClientClip(r),
+    match_hint: (r.match_hint as string | null) ?? null,
+  }));
+  if (strict.length >= BROADEN_BELOW || strict.length >= limit) return strict;
+
+  // Too few direct hits — offer the nearest shelf, never mixed in above them.
+  const category = tokenize(phrase).map((t) => CATEGORY_SYNONYMS[t]).find(Boolean);
+  if (!category) return strict;
+
+  const seen = new Set(strict.map((r) => r.clip_id));
+  const { data: catRows } = await db
+    .from('client_clips')
+    .select(CLIP_SELECT)
+    .contains('categories', [category])
+    .limit(limit);
+  const broadened = asRows(catRows)
+    .filter((r) => !seen.has(r.clip_id))
+    .slice(0, Math.max(0, limit - strict.length))
+    .map((r) => ({ ...toClientClip(r), match_hint: `no exact match — from ${category}` }));
+
+  return [...strict, ...broadened];
+}
+
+/** The previous keyword search, kept for reference by the regression fixtures. */
+export async function searchClipsLegacy(q: string, limit = 60): Promise<SearchResult[]> {
   const db = supabaseServer();
   const phrase = q.trim();
   const tokens = tokenize(phrase);

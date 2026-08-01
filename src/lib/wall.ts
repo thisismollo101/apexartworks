@@ -70,6 +70,14 @@ export const CATEGORY_KEYS = [
   'sport',
   'art',
   'lifestyle',
+  'automotive',
+  'nature',
+  'tech',
+  'family',
+  'heritage',
+  'beauty',
+  'romance',
+  'scifi',
 ] as const;
 export type CategoryKey = (typeof CATEGORY_KEYS)[number];
 
