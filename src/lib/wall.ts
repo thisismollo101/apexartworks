@@ -12,6 +12,12 @@
  * prompt in one block alongside the per-shot breakdown (0009). The global
  * "Style & Feel" / "Audio" directives exist only in this column.
  *
+ * ATTRIBUTION (0010): the author/licence columns are also client-facing, but
+ * they are not an override — they are new columns that exist precisely to be
+ * shown. Prompts imported from a CC BY 4.0 collection may only be displayed
+ * WITH credit, so hiding these would breach the licence rather than protect
+ * anything.
+ *
  * The wall still keeps everything else out — the internal tags, the gate
  * fields, and prompt_health / source_prompt_file never appear in any client
  * response, by construction.
@@ -40,6 +46,14 @@ export const CLIP_CLIENT_FIELDS = [
   // Owner override (Aidan, 2026-07-29): the full raw prompt, shown as one
   // block on the clip page next to the per-shot breakdown (0009).
   'verbatim_prompt',
+  // Attribution (0010). Not an override of the wall: these are new columns
+  // carrying the credit that the imported prompts' CC BY 4.0 licence REQUIRES.
+  // They must reach the client — an uncredited display would breach the
+  // licence. NULL on our own originals, where no credit line renders.
+  'author_name',
+  'author_url',
+  'license',
+  'license_url',
 ] as const;
 
 /** The only values `categories` may ever contain (0004_categories.sql). */
@@ -81,6 +95,10 @@ export type ClientClip = {
   source_url: string | null;
   categories: string[] | null;
   verbatim_prompt: string | null;
+  author_name: string | null;
+  author_url: string | null;
+  license: string | null;
+  license_url: string | null;
 };
 
 export type ClientShot = {

@@ -20,6 +20,10 @@
  *  4. every client HTTP endpoint, grepped for still-internal field names → absent
  *  5. a cut clip 404s on the clip endpoint and never appears in lists
  *
+ *  5b. attribution (0010) reaches the client and no CC-licensed clip is
+ *     missing its author credit — here the breach would be too LITTLE shown,
+ *     not too much.
+ *
  *  6. the admin surface: /api/admin/clips/[id] is 404 for no-session AND for
  *     a signed-in non-admin, 200 with verbatim_prompt for an admin, and no
  *     /admin link or internal string appears on any client page.
@@ -57,6 +61,18 @@ async function auditDatabase() {
     return;
   }
   const anon = createClient(url, anonKey, { auth: { persistSession: false } });
+
+  // A request that never arrived proves nothing. Without this guard a blocked
+  // host, wrong URL or DNS failure makes every "anon cannot read X" check pass
+  // for the wrong reason — the audit would report a wall that was never tested.
+  const { error: reachErr } = await anon.from('client_clips').select('clip_id').limit(1);
+  if (reachErr && !/permission|denied|does not exist|policy/i.test(reachErr.message)) {
+    fail(
+      'cannot reach Supabase — DB audit is INCONCLUSIVE, not passing',
+      `${reachErr.message} (every "anon cannot read" check below would pass vacuously)`,
+    );
+    return;
+  }
 
   for (const table of ['clips', 'shots', 'client_selection', 'floor_log']) {
     const { data, error } = await anon.from(table).select('*').limit(1);
@@ -104,6 +120,33 @@ async function auditDatabase() {
     else ok(`categories values are within the 8 fixed keys (${catRows.length} rows checked)`);
     if (empty) fail('clips with empty categories', `${empty} rows — the 0004 fallback should prevent this`);
     else ok('every visible clip has at least one category');
+  }
+
+  // Attribution (0010): the inverse of a leak check. Prompts imported under
+  // CC BY 4.0 may only be shown WITH credit, so the failure mode here is a
+  // credit that DOESN'T reach the client. Two things must hold: the columns
+  // are readable by anon, and no licensed clip is missing its author.
+  const { data: attrRows, error: attrErr } = await anon
+    .from('client_clips')
+    .select('clip_id,author_name,author_url,license,license_url')
+    .limit(1000);
+  if (attrErr || !attrRows) {
+    fail('client_clips missing attribution columns', attrErr?.message ?? 'no rows');
+  } else {
+    const rows = attrRows as {
+      clip_id: string; author_name: string | null; license: string | null;
+    }[];
+    const credited = rows.filter((r) => r.author_name).length;
+    const uncredited = rows.filter((r) => r.license && !r.author_name);
+    ok(`client_clips exposes attribution (${credited}/${rows.length} clips carry a credit)`);
+    if (uncredited.length) {
+      fail(
+        'licensed clips without an author credit',
+        `${uncredited.length} rows (e.g. ${uncredited[0].clip_id}) — CC BY requires the credit`,
+      );
+    } else {
+      ok('every licensed clip carries its author credit');
+    }
   }
 }
 

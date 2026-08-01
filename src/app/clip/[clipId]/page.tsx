@@ -167,6 +167,48 @@ export default async function ClipPage({
             <CopyBlock text={clip.verbatim_prompt} label="Verbatim — complete" />
           </section>
         )}
+
+        {/* Credit for an imported prompt — a licence obligation, not a nicety.
+            The prompt text above comes from a collection published under
+            CC BY 4.0, which allows us to show and adapt it only WITH credit to
+            its author. Renders only for clips that carry attribution; our own
+            originals have these columns NULL and show nothing. */}
+        {clip.author_name && (
+          <section className="mt-8 rounded-xl border border-hairline bg-surface px-5 py-4">
+            <p className="text-[13px] leading-relaxed text-txt-muted">
+              Prompt by{' '}
+              {clip.author_url ? (
+                <a
+                  href={clip.author_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-txt-secondary underline decoration-hairline underline-offset-4 transition-colors hover:text-txt"
+                >
+                  {clip.author_name}
+                </a>
+              ) : (
+                <span className="text-txt-secondary">{clip.author_name}</span>
+              )}
+              {clip.license && (
+                <>
+                  {' · licensed under '}
+                  {clip.license_url ? (
+                    <a
+                      href={clip.license_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline decoration-hairline underline-offset-4 transition-colors hover:text-txt-secondary"
+                    >
+                      {clip.license}
+                    </a>
+                  ) : (
+                    clip.license
+                  )}
+                </>
+              )}
+            </p>
+          </section>
+        )}
       </div>
 
       {/* Related clips — three more films from the library, in one row */}
