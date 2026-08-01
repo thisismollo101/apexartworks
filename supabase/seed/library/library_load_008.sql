@@ -1177,5 +1177,14 @@ from (values
        slice_at, slice_len, description, subject_role, action, food_item,
        food_role, setting, mood)
 join clips c on c.clip_id = v.clip_id
+-- The clip insert above is DO NOTHING, so for a clip that ALREADY existed
+-- its row still holds the original shot_count and the original shots. Without
+-- this guard the shot insert would still run for it, and wherever this
+-- splitter finds more beats than the original decomposition did, the extra
+-- higher-index shots would land on top — leaving one clip carrying two
+-- different decompositions at once (28 clips, 44 stray shots, seen for real).
+-- For a clip this load actually inserted, shot_count is this run's own count,
+-- so every shot passes.
+where v.shot_index::int <= c.shot_count
 -- Same reasoning as the clips: never touch a shot that already exists.
 on conflict (shot_id) do nothing;
