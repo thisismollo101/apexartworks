@@ -30,7 +30,7 @@
  * a colon later in a descriptive sentence is left alone.
  */
 const DIRECTIVE_LINE =
-  /^\s*[*_#>\-\s]*(?:reference (?:image|video)|replicate|use the provided|camera|shot list|sound|audio|sfx|music|voice ?over|vo|narration|subtitles?|text overlay|style|overall style|visual style|art style|duration|length|aspect ratio|resolution|quality|render|negative prompts?|technical requirements?|requirements?|notes?|format|editing|transitions?|lighting|colou?r (?:grade|palette)|palette|grading|prompt|task|goal|objective|instructions?|output|model|seed)\s*[:：]/i;
+  /^\s*[*_#>\-\s]*(?:reference (?:image|video)|replicate|use the provided|camera|camera movement|camera angle|shot list|shot type|framing|lens|sound|audio|sfx|music|voice ?over|vo|narration|subtitles?|text overlay|style|overall style|visual style|art style|duration|length|aspect ratio|resolution|quality|render|negative prompts?|technical requirements?|requirements?|notes?|format|editing|transitions?|lighting|colou?r (?:grade|palette)|palette|grading|prompt|task|goal|objective|instructions?|output|model|seed|language|watermark|logo|title card)\s*[:：]/i;
 
 /**
  * Direction addressed to the generator that carries no colon to key on —
@@ -45,7 +45,7 @@ const META_INSTRUCTION_LINE =
  * "LOGLINE: …". The label is furniture; what follows it is the film.
  */
 const LEADING_LABEL =
-  /^\s*(?:concept|idea|logline|premise|synopsis|summary|title|theme|brief|story|scenario|setup|subject|topic|description)\s*[:：]\s*/i;
+  /^\s*(?:concept|idea|logline|premise|synopsis|summary|title|theme|brief|story|scenario|setup|subject|topic|description|action(?:\s*\/\s*expression)?|expression|visuals?|details?|atmosphere|movement|focus|key moment|core burst point)\s*[:：]\s*/i;
 
 /**
  * A section header standing on its own line — "[Style]", "【场景】", "Scene:".
@@ -203,6 +203,9 @@ export function deriveTitle(prompt: string): string {
     phrase = (lastSpace > 24 ? cut.slice(0, lastSpace) : cut).trim();
   }
   phrase = trimDangling(phrase);
+  // Clause-splitting can cut between a pair of quotes, leaving one hanging:
+  // Visualizing "Smell. An unmatched quote reads as a typo, so drop them all.
+  if (((phrase.match(/"/g) ?? []).length) % 2 === 1) phrase = phrase.replace(/"/g, '').trim();
   if (phrase.length < 3) return 'Untitled Film';
   return titleCase(phrase);
 }

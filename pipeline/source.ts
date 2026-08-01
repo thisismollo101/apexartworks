@@ -20,6 +20,31 @@ export type SourceRow = {
   has_timecode: boolean;
 };
 
+/**
+ * 44 rows in the sheet had their line breaks written as the two characters
+ * backslash-n and never unescaped, so the prompt arrives as one unbroken line.
+ * That is a serialization artifact of how the CSV was built, not something its
+ * author wrote — and it hides the scene headers and beat markers that the shot
+ * splitter reads, so those films decompose badly.
+ *
+ * Restoring the breaks is deliberately narrow: only when the row has NO real
+ * newline at all AND carries more than one escape. A prompt that genuinely
+ * mentions a backslash-n while also being properly line-broken is left alone.
+ */
+const ESCAPED_ONLY = (p: string) => !/\r|\n/.test(p) && (p.match(/\\n/g) ?? []).length > 1;
+
+/**
+ * The same rows have their quotes escaped too, so a title reads
+ * \"The Scent of Personas\". One pass over the whole escape set, so a
+ * sequence is never unescaped twice.
+ */
+export const restoreEscapes = (p: string): string =>
+  ESCAPED_ONLY(p)
+    ? p.replace(/\\([nrt"\\])/g, (_, c: string) =>
+        c === 'n' ? '\n' : c === 'r' ? '\r' : c === 't' ? '\t' : c,
+      )
+    : p;
+
 export function loadSourceLibrary(csvPath?: string): SourceRow[] {
   const file = csvPath ?? path.join(process.cwd(), 'data', 'apex_source_library.csv');
   const records = parse(fs.readFileSync(file, 'utf8'), {
@@ -29,7 +54,7 @@ export function loadSourceLibrary(csvPath?: string): SourceRow[] {
   return records.map((r) => ({
     video_id: r.video_id,
     source_url: r.source_url,
-    verbatim_prompt: r.verbatim_prompt,
+    verbatim_prompt: restoreEscapes(r.verbatim_prompt),
     prefilter_flag: r.prefilter_flag ?? '',
     has_timecode: r.has_timecode === 'True' || r.has_timecode === 'true',
   }));
