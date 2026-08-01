@@ -155,11 +155,15 @@ const tokenize = (q: string): string[] => [
  * Relevance is the returned order — deliberately NOT re-sorted by
  * distinctiveness here, which would override what the user actually asked for.
  *
- * If a strict search finds very little, a category tier is appended BELOW it
- * ("pizza" → the food shelf), clearly labelled so a broadened result is never
- * mistaken for a direct hit.
+ * Broadening is a LAST RESORT, not a top-up. An earlier cut of this widened
+ * whenever fewer than 8 strict hits came back, which turned "girl eating" —
+ * 7 genuine matches — into 60 results padded with 53 loosely-related dining
+ * clips. That is precisely the noise this rewrite exists to remove. So the
+ * category tier is only offered when the strict search finds NOTHING AT ALL,
+ * and it is capped rather than filling the page.
  */
-const BROADEN_BELOW = 8;
+const BROADEN_ONLY_WHEN_EMPTY = 0;
+const BROADEN_MAX = 24;
 
 export async function searchClips(q: string, limit = 60): Promise<SearchResult[]> {
   const db = supabaseServer();
@@ -174,7 +178,7 @@ export async function searchClips(q: string, limit = 60): Promise<SearchResult[]
     ...toClientClip(r),
     match_hint: (r.match_hint as string | null) ?? null,
   }));
-  if (strict.length >= BROADEN_BELOW || strict.length >= limit) return strict;
+  if (strict.length > BROADEN_ONLY_WHEN_EMPTY) return strict;
 
   // Too few direct hits — offer the nearest shelf, never mixed in above them.
   const category = tokenize(phrase).map((t) => CATEGORY_SYNONYMS[t]).find(Boolean);
@@ -188,7 +192,7 @@ export async function searchClips(q: string, limit = 60): Promise<SearchResult[]
     .limit(limit);
   const broadened = asRows(catRows)
     .filter((r) => !seen.has(r.clip_id))
-    .slice(0, Math.max(0, limit - strict.length))
+    .slice(0, Math.min(BROADEN_MAX, limit))
     .map((r) => ({ ...toClientClip(r), match_hint: `no exact match — from ${category}` }));
 
   return [...strict, ...broadened];
