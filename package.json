@@ -10,7 +10,9 @@
     "regression": "tsx pipeline/regression.ts",
     "ingest": "tsx pipeline/ingest.ts",
     "seed-demo": "tsx scripts/seed-demo.ts",
-    "wall-audit": "tsx scripts/wall-audit.ts"
+    "wall-audit": "tsx scripts/wall-audit.ts",
+    "build-library-load": "tsx scripts/import/build-library-load-sql.ts",
+    "apply-library-load": "bash scripts/import/apply-library-load.sh"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.111.0",
