@@ -105,7 +105,7 @@ async function auditDatabase() {
   const CATEGORY_KEYS = [
     'food', 'beverage', 'venue', 'event', 'travel', 'characters', 'action',
     'fashion', 'music', 'sport', 'art', 'lifestyle',
-    'automotive', 'nature', 'tech', 'family', 'heritage', 'beauty', 'romance', 'scifi',
+    'automotive', 'nature', 'tech', 'family', 'heritage', 'beauty', 'romance', 'scifi', 'dining',
   ];
   const { data: catRows, error: catErr } = await anon.from('client_clips').select('categories').limit(1000);
   if (catErr || !catRows) {

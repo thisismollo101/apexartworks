@@ -38,6 +38,7 @@ const CATEGORIES: { key: string; label: string }[] = [
   { key: 'beauty', label: 'Beauty & Wellness' },
   { key: 'romance', label: 'Romance' },
   { key: 'scifi', label: 'Sci-Fi & Fantasy' },
+  { key: 'dining', label: 'Dining' },
 ];
 
 /**

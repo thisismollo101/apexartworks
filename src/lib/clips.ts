@@ -99,7 +99,9 @@ const STOP_WORDS = new Set([
 // Query words that map straight onto a browse category, so "drinks" finds
 // every beverage film even when the word itself never appears in the text.
 const CATEGORY_SYNONYMS: Record<string, CategoryKey> = {
-  food: 'food', foods: 'food', eat: 'food', eating: 'food', dish: 'food', meal: 'food',
+  food: 'food', foods: 'food', dish: 'food', meal: 'food',
+  // eat/eating describe the ACT, which is what dining is for (0014)
+  eat: 'dining', eating: 'dining',
   beverage: 'beverage', beverages: 'beverage', drink: 'beverage', drinks: 'beverage',
   venue: 'venue', venues: 'venue', restaurant: 'venue', restaurants: 'venue',
   event: 'event', events: 'event',
@@ -123,6 +125,8 @@ const CATEGORY_SYNONYMS: Record<string, CategoryKey> = {
   beauty: 'beauty', skincare: 'beauty', wellness: 'beauty', spa: 'beauty',
   romance: 'romance', romantic: 'romance', love: 'romance', couple: 'romance',
   scifi: 'scifi', futuristic: 'scifi', cyberpunk: 'scifi', alien: 'scifi',
+  dining: 'dining', dinner: 'dining', lunch: 'dining', breakfast: 'dining',
+  diner: 'dining', banquet: 'dining', feast: 'dining',
 };
 
 /** Split a phrase into deduped, stop-word-free keywords. */

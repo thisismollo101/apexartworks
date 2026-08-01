@@ -29,6 +29,7 @@ const LABELS: Record<(typeof CATEGORY_KEYS)[number], string> = {
   beauty: 'Beauty & Wellness',
   romance: 'Romance',
   scifi: 'Sci-Fi & Fantasy',
+  dining: 'Dining',
 };
 
 const pageHref = (page: number, cat?: string) =>
